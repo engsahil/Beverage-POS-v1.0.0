@@ -5,7 +5,7 @@ import { config } from '../src/lib/config.js';
 const prisma = new PrismaClient();
 
 async function main() {
-  console.log('🌱 Starting database seed...\n');
+  console.log(' Starting database seed...\n');
 
   // 1. Create business
   let business = await prisma.business.findFirst();
@@ -20,9 +20,9 @@ async function main() {
         address: 'Lahore, Punjab, Pakistan',
       },
     });
-    console.log('✅ Business created:', business.name);
+    console.log("[SEED] Business created:', business.name);
   } else {
-    console.log('ℹ️  Business already exists:', business.name);
+    console.log('ℹ  Business already exists:', business.name);
   }
 
   // 2. Create default branch
@@ -40,9 +40,9 @@ async function main() {
         phone: business.phone,
       },
     });
-    console.log('✅ Branch created:', branch.name);
+    console.log("[SEED] Branch created:', branch.name);
   } else {
-    console.log('ℹ️  Branch already exists:', branch.name);
+    console.log('ℹ  Branch already exists:', branch.name);
   }
 
   // 3. Seed permissions
@@ -180,9 +180,9 @@ async function main() {
         businessId: business.id,
       })),
     });
-    console.log(`✅ ${defaultPermissions.length} permissions created`);
+    console.log("[SEED] ${defaultPermissions.length} permissions created`);
   } else {
-    console.log(`ℹ️  ${existingPermCount} permissions already exist`);
+    console.log(`ℹ  ${existingPermCount} permissions already exist`);
   }
 
   // 4. Create Admin role (with all permissions)
@@ -212,9 +212,9 @@ async function main() {
       })),
     });
 
-    console.log('✅ Admin role created with all permissions');
+    console.log("[SEED] Admin role created with all permissions');
   } else {
-    console.log('ℹ️  Admin role already exists');
+    console.log('ℹ  Admin role already exists');
   }
 
   // 5. Create Cashier role (with limited permissions)
@@ -260,9 +260,9 @@ async function main() {
       })),
     });
 
-    console.log('✅ Cashier role created with limited permissions');
+    console.log("[SEED] Cashier role created with limited permissions');
   } else {
-    console.log('ℹ️  Cashier role already exists');
+    console.log('ℹ  Cashier role already exists');
   }
 
   // 6. Create Admin user
@@ -286,12 +286,12 @@ async function main() {
       },
     });
 
-    console.log('✅ Admin user created:', adminUser.username);
+    console.log("[SEED] Admin user created:', adminUser.username);
     console.log('   Username:', config.SEED_ADMIN_USERNAME);
     console.log('   Password:', config.SEED_ADMIN_PASSWORD);
-    console.log('   ⚠️  CHANGE THIS PASSWORD IN PRODUCTION!\n');
+    console.log('     CHANGE THIS PASSWORD IN PRODUCTION!\n');
   } else {
-    console.log('ℹ️  Admin user already exists:', adminUser.username);
+    console.log('ℹ  Admin user already exists:', adminUser.username);
   }
 
   // 7. Create default settings
@@ -349,21 +349,21 @@ async function main() {
     }
   }
 
-  console.log('✅ Default settings created');
+  console.log("[SEED] Default settings created');
 
-  console.log('\n🎉 Database seed completed successfully!');
-  console.log('\n📝 Summary:');
+  console.log('\n Database seed completed successfully!');
+  console.log('\n Summary:');
   console.log('   - Business:', business.name);
   console.log('   - Branch:', branch.name);
   console.log('   - Permissions:', defaultPermissions.length);
   console.log('   - Roles: Admin, Cashier');
   console.log('   - Admin User:', adminUser.username);
-  console.log('\n🚀 You can now start the server with: npm run dev:server\n');
+  console.log('\n You can now start the server with: npm run dev:server\n');
 }
 
 main()
   .catch((e) => {
-    console.error('❌ Seed failed:', e);
+    console.error("[SEED ERROR] Seed failed:', e);
     process.exit(1);
   })
   .finally(async () => {

@@ -523,4 +523,4 @@ describe('Phase 3 - Product Catalog', () => {
   });
 });
 
-console.log('✅ All Phase 3 tests passed!');
+console.log('[PASS] All Phase 3 tests passed!');

@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import api from '../api';
+import { IconUsers, IconSearch, IconTrash } from './Icons';
 
 interface Customer {
   id: string;
@@ -61,121 +62,135 @@ export default function CustomerSelector({ selectedCustomer, onSelectCustomer }:
   };
 
   return (
-    <div style={{ position: 'relative', marginBottom: 16 }}>
-      <label style={{ display: 'block', marginBottom: 4, fontSize: 14, fontWeight: 500, color: '#374151' }}>
-        Customer (Optional)
-      </label>
-
+    <div style={{ position: 'relative' }}>
       {selectedCustomer ? (
-        <div style={{
-          padding: 12,
-          background: '#f0f9ff',
-          border: '1px solid #0284c7',
-          borderRadius: 6,
-          display: 'flex',
-          justifyContent: 'space-between',
-          alignItems: 'center',
-        }}>
+        <div
+          style={{
+            padding: '8px 12px',
+            background: 'var(--info-bg)',
+            border: '1px solid var(--info-border)',
+            borderRadius: 'var(--radius-sm)',
+            display: 'flex',
+            justifyContent: 'space-between',
+            alignItems: 'center',
+          }}
+        >
           <div>
-            <div style={{ fontWeight: 600, color: '#0c4a6e', marginBottom: 2 }}>
-              {selectedCustomer.name}
+            <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+              <IconUsers size={14} color="#0284c7" />
+              <span style={{ fontWeight: 700, color: '#0c4a6e', fontSize: 13 }}>
+                {selectedCustomer.name}
+              </span>
             </div>
-            <div style={{ fontSize: 12, color: '#0369a1' }}>
-              {selectedCustomer.phone || selectedCustomer.email || 'No contact info'}
-            </div>
-            <div style={{ fontSize: 12, color: '#0369a1', marginTop: 2 }}>
-              Balance: Rs. {selectedCustomer.currentBalance.toFixed(2)} | Limit: Rs. {selectedCustomer.creditLimit.toFixed(2)}
+            <div style={{ fontSize: 11, color: '#0369a1', marginTop: 2 }}>
+              {selectedCustomer.phone || 'No phone'} | Ledger: Rs. {Number(selectedCustomer.currentBalance).toFixed(2)}
             </div>
           </div>
           <button
             onClick={clearCustomer}
             style={{
-              padding: '6px 12px',
-              background: '#fee2e2',
-              color: '#991b1b',
-              border: '1px solid #dc2626',
+              padding: '3px 8px',
+              background: '#ffffff',
+              color: 'var(--danger)',
+              border: '1px solid var(--danger-border)',
               borderRadius: 4,
-              fontSize: 12,
+              fontSize: 11,
               fontWeight: 600,
-              cursor: 'pointer',
             }}
           >
-            Remove
+            Clear
           </button>
         </div>
       ) : (
-        <>
-          <input
-            type="text"
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            onFocus={() => search.length >= 2 && setShowDropdown(true)}
-            placeholder="Search by name or phone..."
+        <div style={{ position: 'relative' }}>
+          <div
             style={{
-              width: '100%',
-              padding: '10px 12px',
-              border: '1px solid #d1d5db',
-              borderRadius: 6,
-              fontSize: 14,
+              display: 'flex',
+              alignItems: 'center',
+              background: '#f8fafc',
+              border: '1px solid var(--border)',
+              borderRadius: 'var(--radius-sm)',
+              padding: '6px 10px',
+              gap: 8,
             }}
-          />
+          >
+            <IconUsers size={14} color="#64748b" />
+            <input
+              type="text"
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              onFocus={() => search.length >= 2 && setShowDropdown(true)}
+              placeholder="Assign Customer (Name/Phone)..."
+              style={{
+                width: '100%',
+                border: 'none',
+                background: 'transparent',
+                fontSize: 12,
+                color: 'var(--text-main)',
+              }}
+            />
+            {search && (
+              <button onClick={() => setSearch('')} style={{ color: '#94a3b8', padding: 2 }}>
+                ×
+              </button>
+            )}
+          </div>
 
           {showDropdown && (
-            <div style={{
-              position: 'absolute',
-              top: '100%',
-              left: 0,
-              right: 0,
-              marginTop: 4,
-              background: 'white',
-              border: '1px solid #d1d5db',
-              borderRadius: 6,
-              boxShadow: '0 4px 6px rgba(0,0,0,0.1)',
-              maxHeight: 300,
-              overflowY: 'auto',
-              zIndex: 1000,
-            }}>
+            <div
+              style={{
+                position: 'absolute',
+                top: '100%',
+                left: 0,
+                right: 0,
+                marginTop: 4,
+                background: '#ffffff',
+                border: '1px solid var(--border)',
+                borderRadius: 'var(--radius-sm)',
+                boxShadow: 'var(--shadow-md)',
+                maxHeight: 260,
+                overflowY: 'auto',
+                zIndex: 1000,
+              }}
+            >
               {loading ? (
-                <div style={{ padding: 16, textAlign: 'center', color: '#6b7280' }}>
-                  Searching...
+                <div style={{ padding: 12, textAlign: 'center', color: 'var(--text-subtle)', fontSize: 12 }}>
+                  Searching registered accounts...
                 </div>
               ) : customers.length === 0 ? (
-                <div style={{ padding: 16, textAlign: 'center', color: '#6b7280' }}>
-                  {search.length < 2 ? 'Type at least 2 characters to search' : 'No customers found'}
+                <div style={{ padding: 12, textAlign: 'center', color: 'var(--text-subtle)', fontSize: 12 }}>
+                  {search.length < 2 ? 'Type at least 2 characters' : 'No matching customers found'}
                 </div>
               ) : (
-                customers.map(customer => (
+                customers.map((customer) => (
                   <button
                     key={customer.id}
                     onClick={() => selectCustomer(customer)}
                     style={{
                       width: '100%',
-                      padding: 12,
-                      background: 'white',
+                      padding: '8px 12px',
+                      background: '#ffffff',
                       border: 'none',
-                      borderBottom: '1px solid #f3f4f6',
+                      borderBottom: '1px solid var(--border-subtle)',
                       textAlign: 'left',
                       cursor: 'pointer',
-                      transition: 'background 0.2s',
+                      display: 'block',
                     }}
-                    onMouseEnter={(e) => e.currentTarget.style.background = '#f9fafb'}
-                    onMouseLeave={(e) => e.currentTarget.style.background = 'white'}
+                    onMouseEnter={(e) => (e.currentTarget.style.background = '#f8fafc')}
+                    onMouseLeave={(e) => (e.currentTarget.style.background = '#ffffff')}
                   >
-                    <div style={{ fontWeight: 600, color: '#1f2937', marginBottom: 2 }}>
+                    <div style={{ fontWeight: 600, color: 'var(--text-main)', fontSize: 12 }}>
                       {customer.name}
                     </div>
-                    <div style={{ fontSize: 12, color: '#6b7280' }}>
-                      {customer.phone || customer.email || 'No contact info'}
-                    </div>
-                    <div style={{ fontSize: 11, color: '#9ca3af', marginTop: 2 }}>
-                      Balance: Rs. {customer.currentBalance.toFixed(2)}
+                    <div style={{ fontSize: 11, color: 'var(--text-muted)' }}>
+                      {customer.phone || 'No phone'} • Balance: Rs. {Number(customer.currentBalance).toFixed(2)}
                     </div>
                   </button>
                 ))
               )}
             </div>
           )}
-        </>
+        </div>
       )}
     </div>
   );

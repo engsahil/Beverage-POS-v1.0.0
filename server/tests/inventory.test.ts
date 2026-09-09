@@ -622,4 +622,4 @@ describe('Phase 4 - Core Inventory & Stock Ledger', () => {
   });
 });
 
-console.log('✅ All Phase 4 tests defined!');
+console.log('[PASS] All Phase 4 tests defined!');

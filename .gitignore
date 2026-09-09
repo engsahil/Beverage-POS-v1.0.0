@@ -50,3 +50,7 @@ Thumbs.db
 
 # Application runtime storage
 server/storage/
+
+# Backup archives
+*.zip
+test-storage/

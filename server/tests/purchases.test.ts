@@ -705,4 +705,4 @@ describe('Phase 5 - Purchasing & Vendor Management', () => {
   });
 });
 
-console.log('✅ All Phase 5 tests defined!');
+console.log('[PASS] All Phase 5 tests defined!');
