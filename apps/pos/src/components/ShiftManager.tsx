@@ -1,6 +1,12 @@
 import { useState, useEffect } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import api from '../api';
+import {
+  IconClock,
+  IconCheckCircle,
+  IconAlertTriangle,
+  IconPlus,
+} from './Icons';
 
 interface Shift {
   id: string;
@@ -53,7 +59,7 @@ export default function ShiftManager({ onShiftChange }: ShiftManagerProps) {
 
   const openShift = async () => {
     if (!openingAmount || parseFloat(openingAmount) < 0) {
-      setError('Please enter a valid opening amount');
+      setError('Please enter a valid opening float cash amount');
       return;
     }
 
@@ -76,7 +82,7 @@ export default function ShiftManager({ onShiftChange }: ShiftManagerProps) {
 
   const closeShift = async () => {
     if (!closingAmount || parseFloat(closingAmount) < 0) {
-      setError('Please enter a valid closing amount');
+      setError('Please enter verified counted cash amount');
       return;
     }
 
@@ -97,40 +103,46 @@ export default function ShiftManager({ onShiftChange }: ShiftManagerProps) {
   };
 
   if (loading) {
-    return <div style={{ padding: 20, textAlign: 'center', color: '#6b7280' }}>Loading shift...</div>;
+    return (
+      <div style={{ padding: '10px 16px', fontSize: 12, color: 'var(--text-subtle)', background: 'var(--surface-subtle)' }}>
+        Checking shift status...
+      </div>
+    );
   }
 
   return (
-    <div style={{ padding: 16, background: '#f9fafb', borderBottom: '1px solid #e5e7eb' }}>
+    <div style={{ padding: '10px 16px', background: '#ffffff', borderBottom: '1px solid var(--border)' }}>
       {!shift ? (
         <>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
             <div>
-              <div style={{ fontSize: 14, fontWeight: 600, color: '#1f2937' }}>No Active Shift</div>
-              <div style={{ fontSize: 12, color: '#6b7280' }}>Open a shift to start selling</div>
+              <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--text-main)' }}>No Active Terminal Shift</div>
+              <div style={{ fontSize: 11, color: 'var(--text-subtle)' }}>Open shift register to enable checkout & receipt printing</div>
             </div>
             <button
               onClick={() => setShowOpenForm(true)}
               style={{
-                padding: '8px 16px',
-                background: '#dc2626',
-                color: 'white',
-                border: 'none',
-                borderRadius: 6,
-                fontSize: 14,
+                display: 'flex',
+                alignItems: 'center',
+                gap: 6,
+                padding: '6px 14px',
+                background: 'var(--primary)',
+                color: '#ffffff',
+                borderRadius: 'var(--radius-sm)',
+                fontSize: 12,
                 fontWeight: 600,
-                cursor: 'pointer',
               }}
             >
-              Open Shift
+              <IconPlus size={14} />
+              <span>Open Shift</span>
             </button>
           </div>
 
           {showOpenForm && (
-            <div style={{ marginTop: 16, padding: 16, background: 'white', borderRadius: 8 }}>
-              <div style={{ marginBottom: 12 }}>
-                <label style={{ display: 'block', marginBottom: 4, fontSize: 14, fontWeight: 500, color: '#374151' }}>
-                  Opening Cash Amount *
+            <div className="fade-in" style={{ marginTop: 12, padding: 14, background: '#f8fafc', borderRadius: 'var(--radius-md)', border: '1px solid var(--border)' }}>
+              <div style={{ marginBottom: 10 }}>
+                <label style={{ display: 'block', marginBottom: 4, fontSize: 12, fontWeight: 600, color: 'var(--text-muted)' }}>
+                  Opening Float Cash (PKR) *
                 </label>
                 <input
                   type="number"
@@ -141,40 +153,36 @@ export default function ShiftManager({ onShiftChange }: ShiftManagerProps) {
                   style={{
                     width: '100%',
                     padding: '8px 12px',
-                    border: '1px solid #d1d5db',
-                    borderRadius: 6,
-                    fontSize: 14,
+                    border: '1px solid var(--border)',
+                    borderRadius: 4,
+                    fontSize: 13,
+                    background: '#ffffff',
                   }}
+                  className="mono"
+                  autoFocus
                 />
               </div>
-              <div style={{ marginBottom: 12 }}>
-                <label style={{ display: 'block', marginBottom: 4, fontSize: 14, fontWeight: 500, color: '#374151' }}>
-                  Notes (Optional)
+              <div style={{ marginBottom: 10 }}>
+                <label style={{ display: 'block', marginBottom: 4, fontSize: 12, fontWeight: 600, color: 'var(--text-muted)' }}>
+                  Shift Remarks (Optional)
                 </label>
                 <textarea
                   value={notes}
                   onChange={(e) => setNotes(e.target.value)}
                   rows={2}
+                  placeholder="e.g. Morning counter float"
                   style={{
                     width: '100%',
                     padding: '8px 12px',
-                    border: '1px solid #d1d5db',
-                    borderRadius: 6,
-                    fontSize: 14,
-                    resize: 'vertical',
+                    border: '1px solid var(--border)',
+                    borderRadius: 4,
+                    fontSize: 12,
+                    background: '#ffffff',
                   }}
                 />
               </div>
               {error && (
-                <div style={{
-                  padding: 8,
-                  background: '#fef2f2',
-                  border: '1px solid #dc2626',
-                  borderRadius: 6,
-                  color: '#991b1b',
-                  fontSize: 14,
-                  marginBottom: 12,
-                }}>
+                <div style={{ padding: '8px 10px', background: 'var(--danger-bg)', border: '1px solid var(--danger-border)', borderRadius: 4, color: 'var(--danger)', fontSize: 12, marginBottom: 10 }}>
                   {error}
                 </div>
               )}
@@ -183,17 +191,15 @@ export default function ShiftManager({ onShiftChange }: ShiftManagerProps) {
                   onClick={openShift}
                   style={{
                     flex: 1,
-                    padding: '8px 16px',
-                    background: '#dc2626',
-                    color: 'white',
-                    border: 'none',
-                    borderRadius: 6,
-                    fontSize: 14,
+                    padding: '7px 12px',
+                    background: 'var(--primary)',
+                    color: '#ffffff',
+                    borderRadius: 4,
+                    fontSize: 12,
                     fontWeight: 600,
-                    cursor: 'pointer',
                   }}
                 >
-                  Open Shift
+                  Confirm & Open Register
                 </button>
                 <button
                   onClick={() => {
@@ -201,15 +207,12 @@ export default function ShiftManager({ onShiftChange }: ShiftManagerProps) {
                     setError('');
                   }}
                   style={{
-                    flex: 1,
-                    padding: '8px 16px',
-                    background: '#f3f4f6',
-                    color: '#374151',
-                    border: '1px solid #d1d5db',
-                    borderRadius: 6,
-                    fontSize: 14,
-                    fontWeight: 600,
-                    cursor: 'pointer',
+                    padding: '7px 14px',
+                    background: 'var(--surface)',
+                    border: '1px solid var(--border)',
+                    borderRadius: 4,
+                    fontSize: 12,
+                    color: 'var(--text-muted)',
                   }}
                 >
                   Cancel
@@ -221,44 +224,60 @@ export default function ShiftManager({ onShiftChange }: ShiftManagerProps) {
       ) : (
         <>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-            <div>
-              <div style={{ fontSize: 14, fontWeight: 600, color: '#059669' }}>
-                ✓ Shift Active
+            <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+              <div
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 6,
+                  padding: '3px 8px',
+                  borderRadius: 9999,
+                  background: 'var(--success-bg)',
+                  border: '1px solid var(--success-border)',
+                  fontSize: 11,
+                  fontWeight: 700,
+                  color: 'var(--success)',
+                }}
+              >
+                <IconCheckCircle size={13} />
+                <span>Shift Active</span>
               </div>
-              <div style={{ fontSize: 12, color: '#6b7280' }}>
-                Opened: {new Date(shift.openedAt).toLocaleTimeString()} | Opening: Rs. {shift.openingAmount.toFixed(2)}
+              <div style={{ fontSize: 12, color: 'var(--text-muted)' }}>
+                Opened: <span className="mono" style={{ fontWeight: 600 }}>{new Date(shift.openedAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span> | Float: <span className="mono" style={{ fontWeight: 600 }}>Rs. {(Number(shift.openingAmount) || 0).toFixed(2)}</span>
               </div>
             </div>
             <button
               onClick={() => setShowCloseForm(true)}
               style={{
-                padding: '8px 16px',
+                display: 'flex',
+                alignItems: 'center',
+                gap: 6,
+                padding: '5px 12px',
                 background: '#78350f',
-                color: 'white',
-                border: 'none',
-                borderRadius: 6,
-                fontSize: 14,
+                color: '#ffffff',
+                borderRadius: 'var(--radius-sm)',
+                fontSize: 12,
                 fontWeight: 600,
-                cursor: 'pointer',
               }}
             >
-              Close Shift
+              <IconClock size={13} />
+              <span>Close Shift</span>
             </button>
           </div>
 
           {showCloseForm && (
-            <div style={{ marginTop: 16, padding: 16, background: 'white', borderRadius: 8 }}>
-              <div style={{ marginBottom: 12, padding: 12, background: '#fef3c7', borderRadius: 6 }}>
-                <div style={{ fontSize: 14, fontWeight: 600, color: '#78350f', marginBottom: 4 }}>
-                  Shift Summary
+            <div className="fade-in" style={{ marginTop: 12, padding: 14, background: '#f8fafc', borderRadius: 'var(--radius-md)', border: '1px solid var(--border)' }}>
+              <div style={{ marginBottom: 10, padding: '10px 12px', background: 'var(--warning-bg)', border: '1px solid var(--warning-border)', borderRadius: 4 }}>
+                <div style={{ fontSize: 12, fontWeight: 700, color: '#92400e', marginBottom: 2 }}>
+                  Register Float Summary
                 </div>
-                <div style={{ fontSize: 13, color: '#78350f' }}>
-                  Opening Amount: Rs. {shift.openingAmount.toFixed(2)}
+                <div style={{ fontSize: 12, color: '#78350f' }} className="mono">
+                  Opening Float: Rs. {(Number(shift.openingAmount) || 0).toFixed(2)}
                 </div>
               </div>
-              <div style={{ marginBottom: 12 }}>
-                <label style={{ display: 'block', marginBottom: 4, fontSize: 14, fontWeight: 500, color: '#374151' }}>
-                  Closing Cash Amount *
+              <div style={{ marginBottom: 10 }}>
+                <label style={{ display: 'block', marginBottom: 4, fontSize: 12, fontWeight: 600, color: 'var(--text-muted)' }}>
+                  Counted Cash in Drawer (PKR) *
                 </label>
                 <input
                   type="number"
@@ -269,40 +288,36 @@ export default function ShiftManager({ onShiftChange }: ShiftManagerProps) {
                   style={{
                     width: '100%',
                     padding: '8px 12px',
-                    border: '1px solid #d1d5db',
-                    borderRadius: 6,
-                    fontSize: 14,
+                    border: '1px solid var(--border)',
+                    borderRadius: 4,
+                    fontSize: 13,
+                    background: '#ffffff',
                   }}
+                  className="mono"
+                  autoFocus
                 />
               </div>
-              <div style={{ marginBottom: 12 }}>
-                <label style={{ display: 'block', marginBottom: 4, fontSize: 14, fontWeight: 500, color: '#374151' }}>
-                  Notes (Optional)
+              <div style={{ marginBottom: 10 }}>
+                <label style={{ display: 'block', marginBottom: 4, fontSize: 12, fontWeight: 600, color: 'var(--text-muted)' }}>
+                  Closing Notes (Optional)
                 </label>
                 <textarea
                   value={notes}
                   onChange={(e) => setNotes(e.target.value)}
                   rows={2}
+                  placeholder="Cash drawer count notes..."
                   style={{
                     width: '100%',
                     padding: '8px 12px',
-                    border: '1px solid #d1d5db',
-                    borderRadius: 6,
-                    fontSize: 14,
-                    resize: 'vertical',
+                    border: '1px solid var(--border)',
+                    borderRadius: 4,
+                    fontSize: 12,
+                    background: '#ffffff',
                   }}
                 />
               </div>
               {error && (
-                <div style={{
-                  padding: 8,
-                  background: '#fef2f2',
-                  border: '1px solid #dc2626',
-                  borderRadius: 6,
-                  color: '#991b1b',
-                  fontSize: 14,
-                  marginBottom: 12,
-                }}>
+                <div style={{ padding: '8px 10px', background: 'var(--danger-bg)', border: '1px solid var(--danger-border)', borderRadius: 4, color: 'var(--danger)', fontSize: 12, marginBottom: 10 }}>
                   {error}
                 </div>
               )}
@@ -311,17 +326,15 @@ export default function ShiftManager({ onShiftChange }: ShiftManagerProps) {
                   onClick={closeShift}
                   style={{
                     flex: 1,
-                    padding: '8px 16px',
+                    padding: '7px 12px',
                     background: '#78350f',
-                    color: 'white',
-                    border: 'none',
-                    borderRadius: 6,
-                    fontSize: 14,
+                    color: '#ffffff',
+                    borderRadius: 4,
+                    fontSize: 12,
                     fontWeight: 600,
-                    cursor: 'pointer',
                   }}
                 >
-                  Close Shift
+                  Reconcile & Close Shift
                 </button>
                 <button
                   onClick={() => {
@@ -329,15 +342,12 @@ export default function ShiftManager({ onShiftChange }: ShiftManagerProps) {
                     setError('');
                   }}
                   style={{
-                    flex: 1,
-                    padding: '8px 16px',
-                    background: '#f3f4f6',
-                    color: '#374151',
-                    border: '1px solid #d1d5db',
-                    borderRadius: 6,
-                    fontSize: 14,
-                    fontWeight: 600,
-                    cursor: 'pointer',
+                    padding: '7px 14px',
+                    background: 'var(--surface)',
+                    border: '1px solid var(--border)',
+                    borderRadius: 4,
+                    fontSize: 12,
+                    color: 'var(--text-muted)',
                   }}
                 >
                   Cancel

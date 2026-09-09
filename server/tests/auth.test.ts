@@ -184,4 +184,4 @@ describe('Database Schema Validation', () => {
   });
 });
 
-console.log('✅ All Phase 2 tests passed!');
+console.log('[PASS] All Phase 2 tests passed!');

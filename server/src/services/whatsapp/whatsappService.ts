@@ -305,7 +305,7 @@ export async function sendTestMessage(input: SendTestMessageInput) {
     }
 
     // Send test message
-    const testMessage = '✅ WhatsApp integration test successful.\n\nThis is a test message from your POS system.';
+    const testMessage = '[SUCCESS] WhatsApp integration test successful.\n\nThis is a test message from your POS system.';
     const result = await provider.sendTextMessage(config.adminPhoneNumber, testMessage);
 
     // Update config

@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import api from '../api';
+import { IconPrinter, IconDownload, IconCheckCircle, IconAlertTriangle, IconReceipt } from './Icons';
 
 interface ReceiptProps {
   saleId: string;
@@ -67,7 +68,7 @@ export default function ReceiptPreview({ saleId, onClose }: ReceiptProps) {
       const { data } = await api.get(`/receipts/${saleId}`);
       setReceipt(data.data);
     } catch (err: any) {
-      setError(err.response?.data?.error?.message || 'Failed to load receipt');
+      setError(err.response?.data?.error?.message || 'Failed to retrieve receipt data');
     } finally {
       setLoading(false);
     }
@@ -76,17 +77,13 @@ export default function ReceiptPreview({ saleId, onClose }: ReceiptProps) {
   const handlePrint = async () => {
     try {
       setPrinting(true);
-      
-      // Try to get PDF first
       const response = await api.get(`/receipts/${saleId}/pdf`, {
         responseType: 'blob',
       });
 
-      // Create blob URL
       const blob = new Blob([response.data], { type: 'application/pdf' });
       const url = window.URL.createObjectURL(blob);
-      
-      // Open in new window for printing
+
       const printWindow = window.open(url, '_blank');
       if (printWindow) {
         printWindow.onload = () => {
@@ -95,12 +92,9 @@ export default function ReceiptPreview({ saleId, onClose }: ReceiptProps) {
           }, 250);
         };
       }
-      
-      // Clean up
       setTimeout(() => window.URL.revokeObjectURL(url), 1000);
     } catch (err) {
-      console.error('Print failed:', err);
-      // Fallback to browser print
+      console.error('PDF print pipeline error, triggering browser print:', err);
       window.print();
     } finally {
       setPrinting(false);
@@ -117,38 +111,33 @@ export default function ReceiptPreview({ saleId, onClose }: ReceiptProps) {
       const url = window.URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.href = url;
-      a.download = `receipt-${receipt?.sale.saleNumber}.pdf`;
+      a.download = `receipt-${receipt?.sale.saleNumber || saleId}.pdf`;
       document.body.appendChild(a);
       a.click();
       document.body.removeChild(a);
       window.URL.revokeObjectURL(url);
     } catch (err) {
       console.error('Download failed:', err);
-      alert('Failed to download PDF');
+      alert('Failed to generate thermal receipt PDF');
     }
   };
 
   if (loading) {
     return (
-      <div style={{
-        position: 'fixed',
-        top: 0,
-        left: 0,
-        right: 0,
-        bottom: 0,
-        background: 'rgba(0,0,0,0.5)',
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'center',
-        zIndex: 2000,
-      }}>
-        <div style={{
-          background: 'white',
-          padding: 32,
-          borderRadius: 8,
-          textAlign: 'center',
-        }}>
-          Loading receipt...
+      <div
+        style={{
+          position: 'fixed',
+          inset: 0,
+          background: 'rgba(15, 23, 42, 0.7)',
+          backdropFilter: 'blur(4px)',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          zIndex: 2000,
+        }}
+      >
+        <div style={{ background: '#ffffff', padding: '32px 48px', borderRadius: 'var(--radius-md)', textAlign: 'center' }}>
+          <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--text-muted)' }}>Generating Sale Thermal Receipt...</div>
         </div>
       </div>
     );
@@ -156,37 +145,34 @@ export default function ReceiptPreview({ saleId, onClose }: ReceiptProps) {
 
   if (error || !receipt) {
     return (
-      <div style={{
-        position: 'fixed',
-        top: 0,
-        left: 0,
-        right: 0,
-        bottom: 0,
-        background: 'rgba(0,0,0,0.5)',
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'center',
-        zIndex: 2000,
-      }}>
-        <div style={{
-          background: 'white',
-          padding: 32,
-          borderRadius: 8,
-          maxWidth: 400,
-        }}>
-          <div style={{ color: '#991b1b', marginBottom: 16 }}>{error || 'Failed to load receipt'}</div>
+      <div
+        style={{
+          position: 'fixed',
+          inset: 0,
+          background: 'rgba(15, 23, 42, 0.7)',
+          backdropFilter: 'blur(4px)',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          zIndex: 2000,
+        }}
+      >
+        <div style={{ background: '#ffffff', padding: 24, borderRadius: 'var(--radius-md)', maxWidth: 400 }}>
+          <div style={{ color: 'var(--danger)', marginBottom: 16, fontSize: 13 }}>
+            {error || 'Failed to load receipt'}
+          </div>
           <button
             onClick={onClose}
             style={{
               padding: '8px 16px',
-              background: '#dc2626',
-              color: 'white',
-              border: 'none',
-              borderRadius: 6,
-              cursor: 'pointer',
+              background: 'var(--primary)',
+              color: '#ffffff',
+              borderRadius: 4,
+              fontSize: 12,
+              fontWeight: 600,
             }}
           >
-            Close
+            Close Receipt View
           </button>
         </div>
       </div>
@@ -194,231 +180,235 @@ export default function ReceiptPreview({ saleId, onClose }: ReceiptProps) {
   }
 
   return (
-    <div style={{
-      position: 'fixed',
-      top: 0,
-      left: 0,
-      right: 0,
-      bottom: 0,
-      background: 'rgba(0,0,0,0.5)',
-      display: 'flex',
-      alignItems: 'center',
-      justifyContent: 'center',
-      zIndex: 2000,
-      padding: 20,
-    }}>
-      <div style={{
-        background: 'white',
-        borderRadius: 8,
-        maxWidth: 500,
-        width: '100%',
-        maxHeight: '90vh',
+    <div
+      style={{
+        position: 'fixed',
+        inset: 0,
+        background: 'rgba(15, 23, 42, 0.7)',
+        backdropFilter: 'blur(4px)',
         display: 'flex',
-        flexDirection: 'column',
-      }}>
-        {/* Header */}
-        <div style={{
-          padding: 16,
-          borderBottom: '1px solid #e5e7eb',
+        alignItems: 'center',
+        justifyContent: 'center',
+        zIndex: 2000,
+        padding: 20,
+      }}
+    >
+      <div
+        className="modal-animate"
+        style={{
+          background: '#ffffff',
+          borderRadius: 'var(--radius-lg)',
+          maxWidth: 440,
+          width: '100%',
+          maxHeight: '92vh',
           display: 'flex',
-          justifyContent: 'space-between',
-          alignItems: 'center',
-        }}>
-          <h2 style={{ margin: 0, fontSize: 18, fontWeight: 600 }}>Receipt Preview</h2>
-          <button
-            onClick={onClose}
-            style={{
-              background: 'none',
-              border: 'none',
-              fontSize: 24,
-              cursor: 'pointer',
-              color: '#6b7280',
-            }}
-          >
+          flexDirection: 'column',
+          boxShadow: 'var(--shadow-modal)',
+        }}
+      >
+        {/* Modal Header */}
+        <div
+          style={{
+            padding: '14px 18px',
+            borderBottom: '1px solid var(--border)',
+            display: 'flex',
+            justifyContent: 'space-between',
+            alignItems: 'center',
+            background: '#f8fafc',
+          }}
+        >
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+            <IconReceipt size={16} color="var(--primary)" />
+            <h2 style={{ margin: 0, fontSize: 14, fontWeight: 700, color: 'var(--text-main)' }}>
+              Fiscal Receipt #{receipt.sale.saleNumber}
+            </h2>
+          </div>
+          <button onClick={onClose} style={{ fontSize: 20, color: 'var(--text-muted)', background: 'transparent' }}>
             ×
           </button>
         </div>
 
-        {/* Receipt Content */}
-        <div style={{
-          flex: 1,
-          overflowY: 'auto',
-          padding: 24,
-        }}>
-          <div id="receipt-content" style={{
-            fontFamily: 'monospace',
-            fontSize: 12,
-            lineHeight: 1.5,
-            maxWidth: 300,
-            margin: '0 auto',
-          }}>
-            {/* Business Info */}
-            <div style={{ textAlign: 'center', marginBottom: 16 }}>
-              {receipt.business.logo && (
-                <img src={receipt.business.logo} alt="Logo" style={{ maxWidth: 100, marginBottom: 8 }} />
-              )}
-              <div style={{ fontSize: 16, fontWeight: 'bold', marginBottom: 4 }}>
+        {/* Paper Thermal Receipt Simulator */}
+        <div style={{ flex: 1, overflowY: 'auto', padding: 20, background: '#f1f5f9' }}>
+          <div
+            id="receipt-content"
+            style={{
+              fontFamily: "'SFMono-Regular', Consolas, 'Liberation Mono', Menlo, Courier, monospace",
+              fontSize: 11,
+              lineHeight: 1.5,
+              background: '#ffffff',
+              padding: '24px 20px',
+              borderRadius: 6,
+              boxShadow: '0 2px 8px rgba(0,0,0,0.06)',
+              color: '#0f172a',
+            }}
+          >
+            {/* Business Header */}
+            <div style={{ textAlign: 'center', marginBottom: 14 }}>
+              <div style={{ fontSize: 15, fontWeight: 800, textTransform: 'uppercase' }}>
                 {receipt.business.name}
               </div>
-              {receipt.business.address && (
-                <div style={{ fontSize: 11 }}>{receipt.business.address}</div>
-              )}
-              {receipt.business.phone && (
-                <div style={{ fontSize: 11 }}>Tel: {receipt.business.phone}</div>
-              )}
+              {receipt.business.address && <div style={{ fontSize: 10 }}>{receipt.business.address}</div>}
+              {receipt.business.phone && <div style={{ fontSize: 10 }}>Tel: {receipt.business.phone}</div>}
             </div>
 
-            {/* Sale Info */}
-            <div style={{ marginBottom: 16 }}>
-              <div>Sale #: {receipt.sale.saleNumber}</div>
-              <div>Date: {new Date(receipt.sale.saleDate).toLocaleString()}</div>
-              <div>Cashier: {receipt.cashier.fullName}</div>
-              <div>Branch: {receipt.branch.name}</div>
+            <div style={{ borderTop: '1px dashed #94a3b8', margin: '10px 0' }} />
+
+            {/* Sale Metadata */}
+            <div style={{ fontSize: 10, lineHeight: 1.4, marginBottom: 10 }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                <span>Bill #: {receipt.sale.saleNumber}</span>
+                <span>{new Date(receipt.sale.saleDate).toLocaleTimeString()}</span>
+              </div>
+              <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                <span>Cashier: {receipt.cashier.fullName}</span>
+                <span>Branch: {receipt.branch.name}</span>
+              </div>
               {receipt.customer && (
-                <div>Customer: {receipt.customer.name}</div>
+                <div style={{ marginTop: 2, fontWeight: 600 }}>
+                  Customer: {receipt.customer.name} {receipt.customer.phone ? `(${receipt.customer.phone})` : ''}
+                </div>
               )}
             </div>
 
-            <div style={{ borderTop: '1px dashed #000', marginBottom: 8 }}></div>
+            <div style={{ borderTop: '1px dashed #94a3b8', margin: '10px 0' }} />
 
-            {/* Items */}
-            <div style={{ marginBottom: 16 }}>
+            {/* Line Items */}
+            <div style={{ marginBottom: 10 }}>
               {receipt.items.map((item, idx) => (
-                <div key={idx} style={{ marginBottom: 8 }}>
-                  <div style={{ fontWeight: 'bold' }}>{item.productName}</div>
+                <div key={idx} style={{ marginBottom: 6 }}>
+                  <div style={{ fontWeight: 700 }}>{item.productName}</div>
                   {item.variantName && (
-                    <div style={{ fontSize: 11, color: '#666' }}>{item.variantName}</div>
+                    <div style={{ fontSize: 9, color: '#64748b' }}>Variant: {item.variantName}</div>
                   )}
                   <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                    <span>{item.quantity} × Rs. {item.unitPrice.toFixed(2)}</span>
-                    <span>Rs. {item.total.toFixed(2)}</span>
+                    <span>
+                      {item.quantity} × Rs. {Number(item.unitPrice).toFixed(2)}
+                    </span>
+                    <span style={{ fontWeight: 600 }}>Rs. {Number(item.total).toFixed(2)}</span>
                   </div>
                   {item.discountAmount > 0 && (
-                    <div style={{ fontSize: 11, color: '#dc2626' }}>
-                      Discount: -Rs. {item.discountAmount.toFixed(2)}
+                    <div style={{ fontSize: 9, color: 'var(--danger)', textAlign: 'right' }}>
+                      Discount: -Rs. {Number(item.discountAmount).toFixed(2)}
                     </div>
                   )}
                 </div>
               ))}
             </div>
 
-            <div style={{ borderTop: '1px dashed #000', marginBottom: 8 }}></div>
+            <div style={{ borderTop: '1px dashed #94a3b8', margin: '10px 0' }} />
 
-            {/* Totals */}
-            <div style={{ marginBottom: 16 }}>
+            {/* Totals & Tax */}
+            <div style={{ fontSize: 11, lineHeight: 1.5, marginBottom: 10 }}>
               <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                <span>Subtotal:</span>
-                <span>Rs. {receipt.sale.subtotal.toFixed(2)}</span>
+                <span>Subtotal</span>
+                <span>Rs. {Number(receipt.sale.subtotal).toFixed(2)}</span>
               </div>
               {receipt.sale.discountAmount > 0 && (
-                <div style={{ display: 'flex', justifyContent: 'space-between', color: '#dc2626' }}>
-                  <span>Discount:</span>
-                  <span>-Rs. {receipt.sale.discountAmount.toFixed(2)}</span>
+                <div style={{ display: 'flex', justifyContent: 'space-between', color: 'var(--danger)' }}>
+                  <span>Discounts</span>
+                  <span>-Rs. {Number(receipt.sale.discountAmount).toFixed(2)}</span>
                 </div>
               )}
               {receipt.sale.taxAmount > 0 && (
                 <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                  <span>Tax:</span>
-                  <span>Rs. {receipt.sale.taxAmount.toFixed(2)}</span>
+                  <span>Sales Tax</span>
+                  <span>+Rs. {Number(receipt.sale.taxAmount).toFixed(2)}</span>
                 </div>
               )}
-              <div style={{
-                display: 'flex',
-                justifyContent: 'space-between',
-                fontWeight: 'bold',
-                fontSize: 14,
-                marginTop: 8,
-                paddingTop: 8,
-                borderTop: '1px solid #000',
-              }}>
-                <span>TOTAL:</span>
-                <span>Rs. {receipt.sale.total.toFixed(2)}</span>
+              <div
+                style={{
+                  display: 'flex',
+                  justifyContent: 'space-between',
+                  fontWeight: 800,
+                  fontSize: 13,
+                  marginTop: 6,
+                  paddingTop: 6,
+                  borderTop: '1px solid #0f172a',
+                }}
+              >
+                <span>GRAND TOTAL</span>
+                <span>Rs. {Number(receipt.sale.total).toFixed(2)}</span>
               </div>
             </div>
 
-            {/* Payments */}
-            <div style={{ marginBottom: 16 }}>
-              {receipt.payments.map((payment, idx) => (
+            {/* Payments breakdown */}
+            <div style={{ fontSize: 10, borderTop: '1px dashed #94a3b8', paddingTop: 8, marginBottom: 8 }}>
+              {receipt.payments.map((p, idx) => (
                 <div key={idx} style={{ display: 'flex', justifyContent: 'space-between' }}>
-                  <span>{payment.method}:</span>
-                  <span>Rs. {payment.amount.toFixed(2)}</span>
+                  <span>Tendered ({p.method}):</span>
+                  <span>Rs. {Number(p.amount).toFixed(2)}</span>
                 </div>
               ))}
-              {receipt.sale.outstandingAmount > 0 && (
-                <div style={{
-                  display: 'flex',
-                  justifyContent: 'space-between',
-                  color: '#dc2626',
-                  fontWeight: 'bold',
-                }}>
-                  <span>Balance Due:</span>
-                  <span>Rs. {receipt.sale.outstandingAmount.toFixed(2)}</span>
-                </div>
-              )}
             </div>
 
-            {/* Footer */}
-            <div style={{ textAlign: 'center', fontSize: 11, marginTop: 16 }}>
-              <div>Thank you for your business!</div>
-              {receipt.sale.notes && (
-                <div style={{ marginTop: 8 }}>{receipt.sale.notes}</div>
-              )}
+            <div style={{ textAlign: 'center', fontSize: 10, color: '#64748b', marginTop: 12 }}>
+              <div>Thank you for choosing {receipt.business.name}!</div>
+              <div style={{ fontSize: 8, marginTop: 4 }}>Electronic POS Receipt Generated By BevPOS Terminal</div>
             </div>
           </div>
         </div>
 
-        {/* Actions */}
-        <div style={{
-          padding: 16,
-          borderTop: '1px solid #e5e7eb',
-          display: 'flex',
-          gap: 8,
-        }}>
+        {/* Footer Actions */}
+        <div
+          style={{
+            padding: '12px 18px',
+            borderTop: '1px solid var(--border)',
+            display: 'flex',
+            gap: 8,
+            background: '#ffffff',
+          }}
+        >
           <button
             onClick={handlePrint}
             disabled={printing}
             style={{
               flex: 1,
-              padding: '10px 16px',
-              background: '#dc2626',
-              color: 'white',
-              border: 'none',
-              borderRadius: 6,
-              fontSize: 14,
-              fontWeight: 600,
-              cursor: printing ? 'not-allowed' : 'pointer',
+              padding: '9px 12px',
+              background: 'var(--primary)',
+              color: '#ffffff',
+              borderRadius: 'var(--radius-sm)',
+              fontSize: 12,
+              fontWeight: 700,
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              gap: 6,
             }}
           >
-            {printing ? 'Printing...' : 'Print Receipt'}
+            <IconPrinter size={14} />
+            <span>{printing ? 'Printing...' : 'Print Thermal'}</span>
           </button>
           <button
             onClick={handleDownloadPDF}
             style={{
               flex: 1,
-              padding: '10px 16px',
-              background: '#78350f',
-              color: 'white',
-              border: 'none',
-              borderRadius: 6,
-              fontSize: 14,
+              padding: '9px 12px',
+              background: 'var(--surface-subtle)',
+              border: '1px solid var(--border)',
+              color: 'var(--text-main)',
+              borderRadius: 'var(--radius-sm)',
+              fontSize: 12,
               fontWeight: 600,
-              cursor: 'pointer',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              gap: 6,
             }}
           >
-            Download PDF
+            <IconDownload size={14} />
+            <span>PDF File</span>
           </button>
           <button
             onClick={onClose}
             style={{
-              flex: 1,
-              padding: '10px 16px',
-              background: '#f3f4f6',
-              color: '#374151',
-              border: '1px solid #d1d5db',
-              borderRadius: 6,
-              fontSize: 14,
-              fontWeight: 600,
-              cursor: 'pointer',
+              padding: '9px 16px',
+              background: 'var(--surface-subtle)',
+              border: '1px solid var(--border)',
+              color: 'var(--text-muted)',
+              borderRadius: 'var(--radius-sm)',
+              fontSize: 12,
+              fontWeight: 500,
             }}
           >
             Close
