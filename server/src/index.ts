@@ -45,9 +45,17 @@ import webhookRoutes from './api/routes/webhooks.js';
 import dataManagementRoutes from './api/routes/dataManagement.js';
 import settingsRoutes from './api/routes/settings.js';
 import performanceRoutes from './api/routes/performance.js';
+import branchRoutes from './api/routes/branches.js';
 
 const app = express();
 const httpServer = createServer(app);
+
+// Global BigInt-safe JSON serialization (API boundary safety net).
+// Prisma BigInt columns would otherwise crash res.json() with
+// "Do not know how to serialize a BigInt". Database values are untouched.
+app.set('json replacer', (_key: string, value: unknown) =>
+  typeof value === 'bigint' ? Number(value) : value
+);
 
 // Initialize Socket.IO
 const io = new Server(httpServer, {
@@ -132,6 +140,7 @@ app.use('/api/v1/whatsapp', whatsappRoutes);
 app.use('/api/v1/data', dataManagementRoutes);
 app.use('/api/v1/settings', settingsRoutes);
 app.use('/api/v1/performance', performanceRoutes);
+app.use('/api/v1/branches', branchRoutes);
 
 // Webhook routes (no authentication)
 app.use('/webhooks', webhookRoutes);

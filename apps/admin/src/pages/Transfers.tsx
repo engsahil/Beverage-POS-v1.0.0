@@ -63,7 +63,11 @@ export default function Transfers() {
     if (validItems.length === 0) { alert('Add at least one item'); return; }
     try {
       setSaving(true);
-      await api.post('/transfers', { ...form, items: validItems });
+      // API requires an ISO datetime string for transferDate.
+      const transferDate = form.transferDate
+        ? new Date(`${form.transferDate}T00:00:00.000Z`).toISOString()
+        : new Date().toISOString();
+      await api.post('/transfers', { ...form, transferDate, items: validItems });
       setShowCreate(false);
       setItems([{ productId: '', quantity: 1 }]);
       setForm({ sourceBranchId: '', destinationBranchId: '', transferDate: new Date().toISOString().split('T')[0], notes: '' });

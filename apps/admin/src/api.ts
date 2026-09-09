@@ -42,7 +42,19 @@ api.interceptors.response.use(
         return Promise.reject(refreshError);
       }
     }
-    
+
+    // Dev-only diagnostics: endpoint + status + backend message (no secrets).
+    if (import.meta.env.DEV) {
+      console.error(
+        '[API]',
+        originalRequest?.method?.toUpperCase(),
+        originalRequest?.url,
+        '→',
+        error.response?.status ?? 'NETWORK_ERROR',
+        error.response?.data?.error?.message || error.message
+      );
+    }
+
     return Promise.reject(error);
   }
 );

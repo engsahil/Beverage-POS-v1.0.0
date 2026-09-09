@@ -607,6 +607,9 @@ export async function getInventories(
       inv.product.minStockThreshold,
       inv.product.maxStockThreshold
     ),
+    // Convenience fields consumed by the Inventory Management UI
+    unit: inv.variant?.unit ?? null,
+    lowStockThreshold: inv.product.minStockThreshold ?? 0,
   }));
 
   // Filter by stock status if provided

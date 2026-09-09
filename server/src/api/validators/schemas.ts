@@ -366,7 +366,7 @@ export const inventorySearchSchema = z.object({
   variantId: z.string().uuid().optional(),
   stockStatus: z.enum(['OUT_OF_STOCK', 'LOW_STOCK', 'NORMAL', 'OVERSTOCKED']).optional(),
   page: z.coerce.number().int().positive().default(1),
-  limit: z.coerce.number().int().positive().max(100).default(20),
+  limit: z.coerce.number().int().positive().max(500).default(20),
 });
 
 export const stockMovementSearchSchema = z.object({
@@ -378,7 +378,7 @@ export const stockMovementSearchSchema = z.object({
   startDate: z.string().optional(),
   endDate: z.string().optional(),
   page: z.coerce.number().int().positive().default(1),
-  limit: z.coerce.number().int().positive().max(100).default(20),
+  limit: z.coerce.number().int().positive().max(500).default(20),
 });
 
 // Movement types enum
@@ -472,7 +472,7 @@ export const vendorSearchSchema = z.object({
   q: z.string().optional(),
   isActive: z.coerce.boolean().optional(),
   page: z.coerce.number().int().positive().default(1),
-  limit: z.coerce.number().int().positive().max(100).default(20),
+  limit: z.coerce.number().int().positive().max(500).default(20),
 });
 
 // ==========================================
@@ -568,7 +568,7 @@ export const purchaseSearchSchema = z.object({
   startDate: z.string().datetime().optional(),
   endDate: z.string().datetime().optional(),
   page: z.coerce.number().int().positive().default(1),
-  limit: z.coerce.number().int().positive().max(100).default(20),
+  limit: z.coerce.number().int().positive().max(500).default(20),
 });
 
 // ==========================================
@@ -580,7 +580,7 @@ export const productSearchSchema = z.object({
   categoryId: z.string().uuid().optional(),
   isActive: z.coerce.boolean().optional(),
   page: z.coerce.number().int().positive().default(1),
-  limit: z.coerce.number().int().positive().max(100).default(20),
+  limit: z.coerce.number().int().positive().max(500).default(20),
 });
 
 // ==========================================
@@ -589,7 +589,7 @@ export const productSearchSchema = z.object({
 
 export const paginationSchema = z.object({
   page: z.coerce.number().int().positive().default(1),
-  limit: z.coerce.number().int().positive().max(100).default(20),
+  limit: z.coerce.number().int().positive().max(500).default(20),
   sortBy: z.string().optional(),
   sortOrder: z.enum(['asc', 'desc']).default('desc'),
 });
@@ -623,7 +623,7 @@ export const stockCountSearchSchema = z.object({
   startDate: z.string().datetime().optional(),
   endDate: z.string().datetime().optional(),
   page: z.coerce.number().int().positive().default(1),
-  limit: z.coerce.number().int().positive().max(100).default(20),
+  limit: z.coerce.number().int().positive().max(500).default(20),
 });
 
 // Transfer Schemas (Phase 6)
@@ -651,7 +651,7 @@ export const transferSearchSchema = z.object({
   startDate: z.string().datetime().optional(),
   endDate: z.string().datetime().optional(),
   page: z.coerce.number().int().positive().default(1),
-  limit: z.coerce.number().int().positive().max(100).default(20),
+  limit: z.coerce.number().int().positive().max(500).default(20),
 });
 
 // Stock Batch / Expiry Schemas (Phase 6)
@@ -676,7 +676,7 @@ export const batchSearchSchema = z.object({
   status: z.enum(['NOT_TRACKED', 'VALID', 'EXPIRING_SOON', 'EXPIRED']).optional(),
   hasExpiry: z.coerce.boolean().optional(),
   page: z.coerce.number().int().positive().default(1),
-  limit: z.coerce.number().int().positive().max(100).default(50),
+  limit: z.coerce.number().int().positive().max(500).default(50),
 });
 
 export const expirySearchSchema = z.object({
@@ -684,7 +684,7 @@ export const expirySearchSchema = z.object({
   status: z.enum(['NOT_TRACKED', 'VALID', 'EXPIRING_SOON', 'EXPIRED']).optional(),
   productId: z.string().uuid().optional(),
   page: z.coerce.number().int().positive().default(1),
-  limit: z.coerce.number().int().positive().max(100).default(50),
+  limit: z.coerce.number().int().positive().max(500).default(50),
 });
 
 // Transfer/Count status enums (Phase 6)

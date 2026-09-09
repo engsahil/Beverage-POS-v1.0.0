@@ -15,7 +15,8 @@ const router = Router();
 router.use(authenticate);
 
 // Apply sensitive limiter to all settings operations
-router.use(sensitiveLimiter);
+// NOTE: sensitiveLimiter is applied per mutating route (not globally), so normal
+// settings reads never trip the sensitive-operations rate limit.
 
 // ==========================================
 // GET ALL SETTINGS
@@ -77,7 +78,7 @@ router.get('/business-profile', authorize('settings.view'), async (req: Request,
  * PUT /api/v1/settings/business-profile
  * Update business profile settings
  */
-router.put('/business-profile', authorize('settings.manage'), async (req: Request, res: Response) => {
+router.put('/business-profile', sensitiveLimiter, authorize('settings.manage'), async (req: Request, res: Response) => {
   try {
     if (!req.user) {
       return res.status(401).json({ success: false, error: { code: 'UNAUTHORIZED' } });
@@ -114,7 +115,7 @@ router.put('/business-profile', authorize('settings.manage'), async (req: Reques
  * POST /api/v1/settings/logo
  * Upload business logo
  */
-router.post('/logo', uploadLimiter, authorize('settings.manage'), async (req: Request, res: Response) => {
+router.post('/logo', sensitiveLimiter, uploadLimiter, authorize('settings.manage'), async (req: Request, res: Response) => {
   try {
     if (!req.user) {
       return res.status(401).json({ success: false, error: { code: 'UNAUTHORIZED' } });
@@ -159,7 +160,7 @@ router.post('/logo', uploadLimiter, authorize('settings.manage'), async (req: Re
  * DELETE /api/v1/settings/logo
  * Remove business logo
  */
-router.delete('/logo', authorize('settings.manage'), async (req: Request, res: Response) => {
+router.delete('/logo', sensitiveLimiter, authorize('settings.manage'), async (req: Request, res: Response) => {
   try {
     if (!req.user) {
       return res.status(401).json({ success: false, error: { code: 'UNAUTHORIZED' } });
@@ -214,7 +215,7 @@ router.get('/receipt', authorize('settings.view'), async (req: Request, res: Res
  * PUT /api/v1/settings/receipt
  * Update receipt settings
  */
-router.put('/receipt', authorize('settings.manage'), async (req: Request, res: Response) => {
+router.put('/receipt', sensitiveLimiter, authorize('settings.manage'), async (req: Request, res: Response) => {
   try {
     if (!req.user) {
       return res.status(401).json({ success: false, error: { code: 'UNAUTHORIZED' } });
@@ -275,7 +276,7 @@ router.get('/invoice', authorize('settings.view'), async (req: Request, res: Res
  * PUT /api/v1/settings/invoice
  * Update invoice settings
  */
-router.put('/invoice', authorize('settings.manage'), async (req: Request, res: Response) => {
+router.put('/invoice', sensitiveLimiter, authorize('settings.manage'), async (req: Request, res: Response) => {
   try {
     if (!req.user) {
       return res.status(401).json({ success: false, error: { code: 'UNAUTHORIZED' } });
@@ -336,7 +337,7 @@ router.get('/pos', authorize('settings.view'), async (req: Request, res: Respons
  * PUT /api/v1/settings/pos
  * Update POS settings
  */
-router.put('/pos', authorize('settings.manage'), async (req: Request, res: Response) => {
+router.put('/pos', sensitiveLimiter, authorize('settings.manage'), async (req: Request, res: Response) => {
   try {
     if (!req.user) {
       return res.status(401).json({ success: false, error: { code: 'UNAUTHORIZED' } });
@@ -397,7 +398,7 @@ router.get('/inventory', authorize('settings.view'), async (req: Request, res: R
  * PUT /api/v1/settings/inventory
  * Update inventory settings
  */
-router.put('/inventory', authorize('settings.manage'), async (req: Request, res: Response) => {
+router.put('/inventory', sensitiveLimiter, authorize('settings.manage'), async (req: Request, res: Response) => {
   try {
     if (!req.user) {
       return res.status(401).json({ success: false, error: { code: 'UNAUTHORIZED' } });
@@ -458,7 +459,7 @@ router.get('/customer', authorize('settings.view'), async (req: Request, res: Re
  * PUT /api/v1/settings/customer
  * Update customer settings
  */
-router.put('/customer', authorize('settings.manage'), async (req: Request, res: Response) => {
+router.put('/customer', sensitiveLimiter, authorize('settings.manage'), async (req: Request, res: Response) => {
   try {
     if (!req.user) {
       return res.status(401).json({ success: false, error: { code: 'UNAUTHORIZED' } });
@@ -519,7 +520,7 @@ router.get('/cloud', authorize('settings.view'), async (req: Request, res: Respo
  * PUT /api/v1/settings/cloud
  * Update cloud/backup settings
  */
-router.put('/cloud', authorize('settings.manage'), async (req: Request, res: Response) => {
+router.put('/cloud', sensitiveLimiter, authorize('settings.manage'), async (req: Request, res: Response) => {
   try {
     if (!req.user) {
       return res.status(401).json({ success: false, error: { code: 'UNAUTHORIZED' } });
@@ -580,7 +581,7 @@ router.get('/whatsapp', authorize('settings.view'), async (req: Request, res: Re
  * PUT /api/v1/settings/whatsapp
  * Update WhatsApp settings
  */
-router.put('/whatsapp', authorize('settings.manage'), async (req: Request, res: Response) => {
+router.put('/whatsapp', sensitiveLimiter, authorize('settings.manage'), async (req: Request, res: Response) => {
   try {
     if (!req.user) {
       return res.status(401).json({ success: false, error: { code: 'UNAUTHORIZED' } });
@@ -604,6 +605,128 @@ router.put('/whatsapp', authorize('settings.manage'), async (req: Request, res: 
       error: {
         code: 'WHATSAPP_UPDATE_FAILED',
         message: error instanceof Error ? error.message : 'Failed to update WhatsApp settings',
+      },
+    });
+  }
+});
+
+// ==========================================
+// POS OFFLINE SETTINGS
+// ==========================================
+
+/**
+ * GET /api/v1/settings/pos-offline
+ * Get POS offline/sync settings
+ */
+router.get('/pos-offline', authorize('settings.view'), async (req: Request, res: Response) => {
+  try {
+    if (!req.user) {
+      return res.status(401).json({ success: false, error: { code: 'UNAUTHORIZED' } });
+    }
+
+    const settings = await settingsService.getPOSOfflineSettings(req.user.businessId);
+
+    return res.json({ success: true, data: settings });
+  } catch (error) {
+    return res.status(500).json({
+      success: false,
+      error: {
+        code: 'POS_OFFLINE_FETCH_FAILED',
+        message: error instanceof Error ? error.message : 'Failed to fetch POS offline settings',
+      },
+    });
+  }
+});
+
+/**
+ * PUT /api/v1/settings/pos-offline
+ * Update POS offline/sync settings
+ */
+router.put('/pos-offline', sensitiveLimiter, authorize('settings.manage'), async (req: Request, res: Response) => {
+  try {
+    if (!req.user) {
+      return res.status(401).json({ success: false, error: { code: 'UNAUTHORIZED' } });
+    }
+
+    const ipAddress = req.ip || req.socket.remoteAddress;
+    const userAgent = req.get('user-agent');
+
+    const settings = await settingsService.updatePOSOfflineSettings(
+      req.user.businessId,
+      req.user.sub,
+      req.body,
+      ipAddress,
+      userAgent
+    );
+
+    return res.json({ success: true, data: settings });
+  } catch (error) {
+    return res.status(400).json({
+      success: false,
+      error: {
+        code: 'POS_OFFLINE_UPDATE_FAILED',
+        message: error instanceof Error ? error.message : 'Failed to update POS offline settings',
+      },
+    });
+  }
+});
+
+// ==========================================
+// POS SCANNER SETTINGS
+// ==========================================
+
+/**
+ * GET /api/v1/settings/pos-scanner
+ * Get POS barcode scanner settings
+ */
+router.get('/pos-scanner', authorize('settings.view'), async (req: Request, res: Response) => {
+  try {
+    if (!req.user) {
+      return res.status(401).json({ success: false, error: { code: 'UNAUTHORIZED' } });
+    }
+
+    const settings = await settingsService.getPOSScannerSettings(req.user.businessId);
+
+    return res.json({ success: true, data: settings });
+  } catch (error) {
+    return res.status(500).json({
+      success: false,
+      error: {
+        code: 'POS_SCANNER_FETCH_FAILED',
+        message: error instanceof Error ? error.message : 'Failed to fetch POS scanner settings',
+      },
+    });
+  }
+});
+
+/**
+ * PUT /api/v1/settings/pos-scanner
+ * Update POS barcode scanner settings
+ */
+router.put('/pos-scanner', sensitiveLimiter, authorize('settings.manage'), async (req: Request, res: Response) => {
+  try {
+    if (!req.user) {
+      return res.status(401).json({ success: false, error: { code: 'UNAUTHORIZED' } });
+    }
+
+    const ipAddress = req.ip || req.socket.remoteAddress;
+    const userAgent = req.get('user-agent');
+
+    const settings = await settingsService.updatePOSScannerSettings(
+      req.user.businessId,
+      req.user.sub,
+      req.body,
+      ipAddress,
+      userAgent
+    );
+
+    return res.json({ success: true, data: settings });
+  } catch (error) {
+    return res.status(400).json({
+      success: false,
+      error: {
+        code: 'POS_SCANNER_UPDATE_FAILED',
+        message: error instanceof Error ? error.message : 'Failed to update POS scanner settings',
       },
     });
   }

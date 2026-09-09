@@ -20,7 +20,7 @@ async function main() {
         address: 'Lahore, Punjab, Pakistan',
       },
     });
-    console.log("[SEED] Business created:', business.name);
+    console.log(`[SEED] Business created:`, business.name);
   } else {
     console.log('ℹ  Business already exists:', business.name);
   }
@@ -40,7 +40,7 @@ async function main() {
         phone: business.phone,
       },
     });
-    console.log("[SEED] Branch created:', branch.name);
+    console.log(`[SEED] Branch created:`, branch.name);
   } else {
     console.log('ℹ  Branch already exists:', branch.name);
   }
@@ -169,20 +169,37 @@ async function main() {
     { name: 'receipts.view', module: 'receipts', action: 'view', description: 'View and print receipts' },
     { name: 'receipts.reprint', module: 'receipts', action: 'reprint', description: 'Reprint existing receipts' },
     { name: 'receipts.configure', module: 'receipts', action: 'configure', description: 'Configure receipt settings' },
+
+    // Shifts (cashier shift management)
+    { name: 'shifts.view', module: 'shifts', action: 'view', description: 'View cashier shifts' },
+    { name: 'shifts.open', module: 'shifts', action: 'open', description: 'Open a cashier shift' },
+    { name: 'shifts.close', module: 'shifts', action: 'close', description: 'Close own cashier shift' },
+    { name: 'shifts.override', module: 'shifts', action: 'override', description: 'Admin-close any cashier shift' },
+    { name: 'shifts.manage', module: 'shifts', action: 'manage', description: 'Manage (cancel) cashier shifts' },
+
+    // Branches (reference data for transfers, stock counts, filters)
+    { name: 'branches.view', module: 'branches', action: 'view', description: 'View branches' },
   ];
 
-  const existingPermCount = await prisma.permission.count({ where: { businessId: business.id } });
-  
-  if (existingPermCount === 0) {
+  // Idempotent permission seeding: create only permissions missing for this business,
+  // so re-running the seed repairs databases created before newer permissions existed.
+  const existingPerms = await prisma.permission.findMany({
+    where: { businessId: business.id },
+    select: { name: true },
+  });
+  const existingPermNames = new Set(existingPerms.map(p => p.name));
+  const missingPermissions = defaultPermissions.filter(p => !existingPermNames.has(p.name));
+
+  if (missingPermissions.length > 0) {
     await prisma.permission.createMany({
-      data: defaultPermissions.map(p => ({
+      data: missingPermissions.map(p => ({
         ...p,
         businessId: business.id,
       })),
     });
-    console.log("[SEED] ${defaultPermissions.length} permissions created`);
+    console.log(`[SEED] ${missingPermissions.length} permission(s) created`);
   } else {
-    console.log(`ℹ  ${existingPermCount} permissions already exist`);
+    console.log(`ℹ  ${existingPerms.length} permissions already exist`);
   }
 
   // 4. Create Admin role (with all permissions)
@@ -212,9 +229,32 @@ async function main() {
       })),
     });
 
-    console.log("[SEED] Admin role created with all permissions');
+    console.log(`[SEED] Admin role created with all permissions`);
   } else {
-    console.log('ℹ  Admin role already exists');
+    // Backfill: grant the Admin role any permissions it is missing
+    // (e.g. shifts.* on databases seeded before those permissions existed).
+    const allPermissions = await prisma.permission.findMany({
+      where: { businessId: business.id },
+      select: { id: true },
+    });
+    const assigned = await prisma.rolePermission.findMany({
+      where: { roleId: adminRole.id },
+      select: { permissionId: true },
+    });
+    const assignedIds = new Set(assigned.map(a => a.permissionId));
+    const missing = allPermissions.filter(p => !assignedIds.has(p.id));
+
+    if (missing.length > 0) {
+      await prisma.rolePermission.createMany({
+        data: missing.map(p => ({
+          roleId: adminRole.id,
+          permissionId: p.id,
+        })),
+      });
+      console.log(`[SEED] Admin role granted ${missing.length} missing permission(s)`);
+    } else {
+      console.log('ℹ  Admin role already exists');
+    }
   }
 
   // 5. Create Cashier role (with limited permissions)
@@ -248,6 +288,9 @@ async function main() {
             'pos.products.search',
             'pos.cart.manage',
             'receipts.view',
+            'shifts.view',
+            'shifts.open',
+            'shifts.close',
           ],
         },
       },
@@ -260,7 +303,7 @@ async function main() {
       })),
     });
 
-    console.log("[SEED] Cashier role created with limited permissions');
+    console.log(`[SEED] Cashier role created with limited permissions`);
   } else {
     console.log('ℹ  Cashier role already exists');
   }
@@ -286,7 +329,7 @@ async function main() {
       },
     });
 
-    console.log("[SEED] Admin user created:', adminUser.username);
+    console.log(`[SEED] Admin user created:`, adminUser.username);
     console.log('   Username:', config.SEED_ADMIN_USERNAME);
     console.log('   Password:', config.SEED_ADMIN_PASSWORD);
     console.log('     CHANGE THIS PASSWORD IN PRODUCTION!\n');
@@ -349,7 +392,7 @@ async function main() {
     }
   }
 
-  console.log("[SEED] Default settings created');
+  console.log(`[SEED] Default settings created`);
 
   console.log('\n Database seed completed successfully!');
   console.log('\n Summary:');
@@ -363,7 +406,7 @@ async function main() {
 
 main()
   .catch((e) => {
-    console.error("[SEED ERROR] Seed failed:', e);
+    console.error(`[SEED ERROR] Seed failed:`, e);
     process.exit(1);
   })
   .finally(async () => {

@@ -137,7 +137,21 @@ export default function ReceiptPreview({ saleId, onClose }: ReceiptProps) {
         }}
       >
         <div style={{ background: '#ffffff', padding: '32px 48px', borderRadius: 'var(--radius-md)', textAlign: 'center' }}>
-          <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--text-muted)' }}>Generating Sale Thermal Receipt...</div>
+          <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--text-muted)', marginBottom: 16 }}>Generating Sale Thermal Receipt...</div>
+          <button
+            onClick={onClose}
+            style={{
+              padding: '8px 16px',
+              background: 'var(--surface-subtle)',
+              color: 'var(--text-muted)',
+              border: '1px solid var(--border)',
+              borderRadius: 4,
+              fontSize: 12,
+              fontWeight: 600,
+            }}
+          >
+            Cancel
+          </button>
         </div>
       </div>
     );

@@ -45,6 +45,22 @@ export interface ListBackupsParams {
 }
 
 // ==========================================
+// API Serialization (BigInt-safe)
+// ==========================================
+
+/**
+ * Convert a CloudBackup Prisma record into a JSON-safe API object.
+ * Prisma BigInt fields (fileSize) cannot be serialized by JSON.stringify,
+ * so conversion happens here at the API boundary. Database values are untouched.
+ */
+export function serializeBackup<T extends { fileSize?: bigint | null }>(backup: T) {
+  return {
+    ...backup,
+    fileSize: backup.fileSize != null ? Number(backup.fileSize) : null,
+  };
+}
+
+// ==========================================
 // Backup Number Generation
 // ==========================================
 
@@ -325,8 +341,9 @@ export async function createBackup(input: CreateBackupInput) {
     logger.error('Backup processing failed', { backupId: backup.id, error: String(error) });
   }
 
-  // Return updated backup record
-  return prisma.cloudBackup.findUnique({ where: { id: backup.id } });
+  // Return updated backup record (serialized: BigInt fileSize -> number)
+  const completed = await prisma.cloudBackup.findUnique({ where: { id: backup.id } });
+  return completed ? serializeBackup(completed) : null;
 }
 
 /**
@@ -503,10 +520,7 @@ export async function listBackups(params: ListBackupsParams) {
   ]);
 
   return {
-    data: backups.map(b => ({
-      ...b,
-      fileSize: b.fileSize ? Number(b.fileSize) : null,
-    })),
+    data: backups.map(b => serializeBackup(b)),
     meta: {
       page,
       limit,
@@ -533,10 +547,7 @@ export async function getBackup(backupId: string, businessId: string) {
     return null;
   }
 
-  return {
-    ...backup,
-    fileSize: backup.fileSize ? Number(backup.fileSize) : null,
-  };
+  return serializeBackup(backup);
 }
 
 // ==========================================
@@ -586,7 +597,8 @@ export async function retryBackup(backupId: string, businessId: string, userId: 
     logger.error('Backup retry failed', { backupId, error: String(error) });
   }
 
-  return prisma.cloudBackup.findUnique({ where: { id: backupId } });
+  const retried = await prisma.cloudBackup.findUnique({ where: { id: backupId } });
+  return retried ? serializeBackup(retried) : null;
 }
 
 // ==========================================

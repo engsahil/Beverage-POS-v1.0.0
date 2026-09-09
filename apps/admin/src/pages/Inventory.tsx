@@ -3,17 +3,20 @@ import api from '../api';
 
 interface InventoryItem {
   id: string;
+  branchId: string;
   productId: string;
+  variantId?: string | null;
   product: {
     name: string;
     sku?: string;
+    minStockThreshold?: number | null;
   };
   currentQuantity: number;
   lowStockThreshold: number;
   unit: {
     name: string;
     shortCode: string;
-  };
+  } | null;
   updatedAt: string;
 }
 
@@ -47,10 +50,20 @@ export default function Inventory() {
   const loadInventory = async () => {
     try {
       setLoading(true);
+      setError('');
       const { data } = await api.get('/inventory', {
         params: { limit: 200 }
       });
-      setInventory(data.data || []);
+      // Normalize API payload: Prisma Decimals serialize as strings, and
+      // unit/threshold may be absent for product-level (non-variant) stock.
+      const items = (data.data || []).map((item: any) => ({
+        ...item,
+        currentQuantity: Number(item.currentQuantity ?? 0),
+        lowStockThreshold: Number(
+          item.lowStockThreshold ?? item.product?.minStockThreshold ?? 0
+        ),
+      }));
+      setInventory(items);
     } catch (err: any) {
       setError('Failed to load inventory');
     } finally {
@@ -74,7 +87,15 @@ export default function Inventory() {
 
     try {
       setAdjusting(true);
-      await api.post('/inventory/adjust', adjustForm);
+      // The adjust API requires branchId (and variantId for variant stock).
+      await api.post('/inventory/adjust', {
+        branchId: adjustItem.branchId,
+        productId: adjustItem.productId,
+        ...(adjustItem.variantId ? { variantId: adjustItem.variantId } : {}),
+        quantity: adjustForm.quantity,
+        reason: adjustForm.reason,
+        notes: adjustForm.notes,
+      });
       setShowAdjustModal(false);
       loadInventory(); // Reload to show updated quantities
     } catch (err: any) {
@@ -235,10 +256,10 @@ export default function Inventory() {
                     {item.product.sku || '-'}
                   </td>
                   <td style={{ padding: 12, fontSize: 14, textAlign: 'right', fontWeight: 600 }}>
-                    {item.currentQuantity.toFixed(2)} {item.unit.shortCode}
+                    {item.currentQuantity.toFixed(2)} {(item.unit?.shortCode ?? '')}
                   </td>
                   <td style={{ padding: 12, fontSize: 14, textAlign: 'right', color: '#6b7280' }}>
-                    {item.lowStockThreshold.toFixed(2)} {item.unit.shortCode}
+                    {item.lowStockThreshold.toFixed(2)} {(item.unit?.shortCode ?? '')}
                   </td>
                   <td style={{ padding: 12, textAlign: 'center' }}>
                     {isOutOfStock(item) ? (
@@ -326,7 +347,7 @@ export default function Inventory() {
               Adjust Stock: {adjustItem.product.name}
             </h2>
             <p style={{ fontSize: 14, color: '#6b7280', marginBottom: 24 }}>
-              Current Stock: <strong>{adjustItem.currentQuantity.toFixed(2)} {adjustItem.unit.shortCode}</strong>
+              Current Stock: <strong>{adjustItem.currentQuantity.toFixed(2)} {(adjustItem.unit?.shortCode ?? '')}</strong>
             </p>
 
             <div style={{ marginBottom: 16 }}>
@@ -347,7 +368,7 @@ export default function Inventory() {
                 }}
               />
               <div style={{ fontSize: 12, color: '#6b7280', marginTop: 4 }}>
-                New Stock: {(adjustItem.currentQuantity + adjustForm.quantity).toFixed(2)} {adjustItem.unit.shortCode}
+                New Stock: {(adjustItem.currentQuantity + adjustForm.quantity).toFixed(2)} {(adjustItem.unit?.shortCode ?? '')}
               </div>
             </div>
 

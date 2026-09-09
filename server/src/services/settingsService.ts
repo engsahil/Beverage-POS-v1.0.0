@@ -124,6 +124,24 @@ export interface WhatsAppSettings {
   dailyReportNotifications: boolean;
 }
 
+export interface POSOfflineSettings {
+  enabled: boolean;
+  autoSync: boolean;
+  syncInterval: number;
+  maxQueueSize: number;
+  retryAttempts: number;
+}
+
+export interface POSScannerSettings {
+  enabled: boolean;
+  enterSuffix: boolean;
+  prefix: string;
+  suffix: string;
+  inputDelay: number;
+  unknownBarcodeBehavior: string;
+  duplicateScanBehavior: string;
+}
+
 // ==========================================
 // DEFAULT SETTINGS
 // ==========================================
@@ -226,6 +244,24 @@ const DEFAULT_WHATSAPP_SETTINGS: WhatsAppSettings = {
   dailyReportNotifications: false,
 };
 
+const DEFAULT_POS_OFFLINE_SETTINGS: POSOfflineSettings = {
+  enabled: true,
+  autoSync: true,
+  syncInterval: 30,
+  maxQueueSize: 100,
+  retryAttempts: 3,
+};
+
+const DEFAULT_POS_SCANNER_SETTINGS: POSScannerSettings = {
+  enabled: true,
+  enterSuffix: true,
+  prefix: '',
+  suffix: '',
+  inputDelay: 50,
+  unknownBarcodeBehavior: 'SEARCH',
+  duplicateScanBehavior: 'INCREMENT',
+};
+
 // ==========================================
 // SETTINGS KEYS
 // ==========================================
@@ -239,6 +275,8 @@ export const SETTINGS_KEYS = {
   CUSTOMER: 'customer_settings',
   CLOUD: 'cloud_settings',
   WHATSAPP: 'whatsapp_settings',
+  POS_OFFLINE: 'pos_offline_settings',
+  POS_SCANNER: 'pos_scanner_settings',
 } as const;
 
 // ==========================================
@@ -319,6 +357,14 @@ export async function getCloudSettings(businessId: string): Promise<CloudSetting
 
 export async function getWhatsAppSettings(businessId: string): Promise<WhatsAppSettings> {
   return getSettings(businessId, SETTINGS_KEYS.WHATSAPP, DEFAULT_WHATSAPP_SETTINGS);
+}
+
+export async function getPOSOfflineSettings(businessId: string): Promise<POSOfflineSettings> {
+  return getSettings(businessId, SETTINGS_KEYS.POS_OFFLINE, DEFAULT_POS_OFFLINE_SETTINGS);
+}
+
+export async function getPOSScannerSettings(businessId: string): Promise<POSScannerSettings> {
+  return getSettings(businessId, SETTINGS_KEYS.POS_SCANNER, DEFAULT_POS_SCANNER_SETTINGS);
 }
 
 // ==========================================
@@ -621,6 +667,54 @@ export async function updateWhatsAppSettings(
   return updated;
 }
 
+export async function updatePOSOfflineSettings(
+  businessId: string,
+  userId: string,
+  settings: Partial<POSOfflineSettings>,
+  ipAddress?: string,
+  userAgent?: string
+): Promise<POSOfflineSettings> {
+  // Validate
+  if (settings.syncInterval !== undefined && settings.syncInterval < 5) {
+    throw new Error('Sync interval must be at least 5 seconds');
+  }
+
+  if (settings.maxQueueSize !== undefined && (settings.maxQueueSize < 1 || settings.maxQueueSize > 10000)) {
+    throw new Error('Max queue size must be between 1 and 10000');
+  }
+
+  if (settings.retryAttempts !== undefined && (settings.retryAttempts < 0 || settings.retryAttempts > 10)) {
+    throw new Error('Retry attempts must be between 0 and 10');
+  }
+
+  const current = await getPOSOfflineSettings(businessId);
+  const updated = { ...current, ...settings };
+
+  await updateSettings(businessId, userId, SETTINGS_KEYS.POS_OFFLINE, updated, ipAddress, userAgent);
+
+  return updated;
+}
+
+export async function updatePOSScannerSettings(
+  businessId: string,
+  userId: string,
+  settings: Partial<POSScannerSettings>,
+  ipAddress?: string,
+  userAgent?: string
+): Promise<POSScannerSettings> {
+  // Validate
+  if (settings.inputDelay !== undefined && (settings.inputDelay < 0 || settings.inputDelay > 1000)) {
+    throw new Error('Input delay must be between 0 and 1000 ms');
+  }
+
+  const current = await getPOSScannerSettings(businessId);
+  const updated = { ...current, ...settings };
+
+  await updateSettings(businessId, userId, SETTINGS_KEYS.POS_SCANNER, updated, ipAddress, userAgent);
+
+  return updated;
+}
+
 // ==========================================
 // LOGO MANAGEMENT
 // ==========================================
@@ -738,11 +832,13 @@ export async function removeLogo(
 // ==========================================
 
 export async function getAllSettings(businessId: string) {
-  const [businessProfile, receipt, invoice, pos, inventory, customer, cloud, whatsapp] = await Promise.all([
+  const [businessProfile, receipt, invoice, pos, posOffline, posScanner, inventory, customer, cloud, whatsapp] = await Promise.all([
     getBusinessProfile(businessId),
     getReceiptSettings(businessId),
     getInvoiceSettings(businessId),
     getPOSSettings(businessId),
+    getPOSOfflineSettings(businessId),
+    getPOSScannerSettings(businessId),
     getInventorySettings(businessId),
     getCustomerSettings(businessId),
     getCloudSettings(businessId),
@@ -754,6 +850,8 @@ export async function getAllSettings(businessId: string) {
     receipt,
     invoice,
     pos,
+    posOffline,
+    posScanner,
     inventory,
     customer,
     cloud,
