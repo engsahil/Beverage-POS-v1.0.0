@@ -290,16 +290,21 @@ export async function searchCustomers(
   params: {
     search?: string;
     status?: string;
+    hasBalance?: boolean;
     page?: number;
     limit?: number;
   } = {}
 ) {
-  const { search, status, page = 1, limit = 20 } = params;
+  const { search, status, hasBalance, page = 1, limit = 20 } = params;
 
   const where: any = { businessId };
 
   if (status) {
     where.status = status;
+  }
+
+  if (hasBalance) {
+    where.currentBalance = { gt: 0 };
   }
 
   if (search) {

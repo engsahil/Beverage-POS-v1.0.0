@@ -9,6 +9,60 @@ const router = Router();
 router.use(authenticate);
 
 /**
+ * GET /reports/sales
+ * Sales summary report (totals + top products) for the Reports dashboard
+ */
+router.get('/sales', authorize('reports.sales.view'), async (req: Request, res: Response) => {
+  try {
+    if (!req.user) {
+      res.status(401).json({ success: false, error: { code: 'UNAUTHORIZED' } });
+      return;
+    }
+
+    const { branchId, startDate, endDate } = req.query as Record<string, string>;
+    const filters = {
+      businessId: req.user.businessId,
+      branchId: branchId || undefined,
+      startDate: startDate ? new Date(startDate) : undefined,
+      endDate: endDate ? new Date(endDate) : undefined,
+    };
+
+    const [daily, topProducts] = await Promise.all([
+      reportService.getDailySalesReport(filters),
+      reportService.getTopSellingProducts(filters, 10),
+    ]);
+
+    res.status(200).json({
+      success: true,
+      data: {
+        totalSales: daily.transactionCount,
+        totalRevenue: daily.netSales,
+        totalDiscount: daily.totalDiscount,
+        totalTax: daily.totalTax,
+        averageOrderValue: daily.averageTransactionValue,
+        cashSales: daily.cashSales,
+        cardSales: daily.cardSales,
+        creditSales: daily.creditSales,
+        topProducts: topProducts.map((p: any) => ({
+          name: p.variant?.name ? `${p.product?.name} (${p.variant.name})` : p.product?.name,
+          quantity: Number(p.quantitySold),
+          revenue: Number(p.netSales),
+        })),
+        dailyBreakdown: [],
+      },
+    });
+  } catch {
+    res.status(500).json({
+      success: false,
+      error: {
+        code: 'FETCH_ERROR',
+        message: 'Failed to fetch sales report',
+      },
+    });
+  }
+});
+
+/**
  * GET /reports/sales/daily
  * Daily sales report
  */

@@ -277,7 +277,39 @@ export const SETTINGS_KEYS = {
   WHATSAPP: 'whatsapp_settings',
   POS_OFFLINE: 'pos_offline_settings',
   POS_SCANNER: 'pos_scanner_settings',
+  POS_QUICK_KEYS: 'pos_quick_keys',
+  POS_SHORTCUTS: 'pos_shortcuts',
 } as const;
+
+// ==========================================
+// POS QUICK KEYS & SHORTCUTS TYPES
+// ==========================================
+
+export interface QuickKeyItem {
+  id: string;
+  productId: string;
+  label: string;
+  sortOrder: number;
+  isActive: boolean;
+}
+
+export interface ShortcutItem {
+  id: string;
+  action: string;
+  key: string;
+  description: string;
+  isCustom: boolean;
+}
+
+const DEFAULT_SHORTCUTS: ShortcutItem[] = [
+  { id: '1', action: 'new_order', key: 'F2', description: 'Start new order / clear cart', isCustom: false },
+  { id: '2', action: 'payment', key: 'F4', description: 'Open checkout payment modal', isCustom: false },
+  { id: '3', action: 'hold_sale', key: 'F5', description: 'Hold current active cart', isCustom: false },
+  { id: '4', action: 'sales_history', key: 'F8', description: 'View sales receipt log', isCustom: false },
+  { id: '5', action: 'close_modal', key: 'Escape', description: 'Close modal / cancel prompt', isCustom: false },
+  { id: '6', action: 'search', key: 'Ctrl+F', description: 'Focus product search bar', isCustom: false },
+  { id: '7', action: 'print', key: 'Ctrl+P', description: 'Trigger thermal receipt reprint', isCustom: false },
+];
 
 // ==========================================
 // GET SETTINGS
@@ -713,6 +745,185 @@ export async function updatePOSScannerSettings(
   await updateSettings(businessId, userId, SETTINGS_KEYS.POS_SCANNER, updated, ipAddress, userAgent);
 
   return updated;
+}
+
+// ==========================================
+// POS QUICK KEYS
+// ==========================================
+
+function sortQuickKeys(keys: QuickKeyItem[]): QuickKeyItem[] {
+  return [...keys].sort((a, b) => a.sortOrder - b.sortOrder);
+}
+
+export async function getQuickKeys(businessId: string): Promise<QuickKeyItem[]> {
+  const keys = await getSettings<QuickKeyItem[]>(businessId, SETTINGS_KEYS.POS_QUICK_KEYS, []);
+  return sortQuickKeys(Array.isArray(keys) ? keys : []);
+}
+
+export async function getQuickKeysEnriched(businessId: string) {
+  const keys = await getQuickKeys(businessId);
+  if (keys.length === 0) return [];
+
+  const products = await prisma.product.findMany({
+    where: { businessId, id: { in: keys.map(k => k.productId) } },
+    select: { id: true, name: true, sellingPrice: true },
+  });
+  const byId = new Map(products.map((p: any) => [p.id, p]));
+
+  // Drop keys whose product no longer exists (keeps UI crash-free)
+  return keys
+    .filter(k => byId.has(k.productId))
+    .map(k => ({ ...k, product: byId.get(k.productId)! }));
+}
+
+export async function createQuickKey(
+  businessId: string,
+  userId: string,
+  input: { productId: string; label?: string; sortOrder?: number; isActive?: boolean },
+  ipAddress?: string,
+  userAgent?: string
+): Promise<QuickKeyItem[]> {
+  if (!input.productId) throw new Error('Product is required');
+
+  const product = await prisma.product.findFirst({
+    where: { id: input.productId, businessId },
+    select: { id: true },
+  });
+  if (!product) throw new Error('Product not found');
+
+  const keys = await getQuickKeys(businessId);
+  const nextOrder = input.sortOrder ?? (keys.length > 0 ? Math.max(...keys.map(k => k.sortOrder)) + 1 : 0);
+
+  const item: QuickKeyItem = {
+    id: `${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 10)}`,
+    productId: input.productId,
+    label: (input.label || '').trim(),
+    sortOrder: nextOrder,
+    isActive: input.isActive ?? true,
+  };
+
+  const updated = sortQuickKeys([...keys, item]);
+  await updateSettings(businessId, userId, SETTINGS_KEYS.POS_QUICK_KEYS, updated, ipAddress, userAgent);
+  return updated;
+}
+
+export async function updateQuickKey(
+  businessId: string,
+  userId: string,
+  id: string,
+  input: { label?: string; isActive?: boolean },
+  ipAddress?: string,
+  userAgent?: string
+): Promise<QuickKeyItem[]> {
+  const keys = await getQuickKeys(businessId);
+  const idx = keys.findIndex(k => k.id === id);
+  if (idx === -1) throw new Error('Quick key not found');
+
+  if (input.label !== undefined) keys[idx].label = input.label.trim();
+  if (input.isActive !== undefined) keys[idx].isActive = input.isActive;
+
+  const updated = sortQuickKeys(keys);
+  await updateSettings(businessId, userId, SETTINGS_KEYS.POS_QUICK_KEYS, updated, ipAddress, userAgent);
+  return updated;
+}
+
+export async function deleteQuickKey(
+  businessId: string,
+  userId: string,
+  id: string,
+  ipAddress?: string,
+  userAgent?: string
+): Promise<QuickKeyItem[]> {
+  const keys = await getQuickKeys(businessId);
+  const updated = sortQuickKeys(keys.filter(k => k.id !== id));
+  if (updated.length === keys.length) throw new Error('Quick key not found');
+
+  await updateSettings(businessId, userId, SETTINGS_KEYS.POS_QUICK_KEYS, updated, ipAddress, userAgent);
+  return updated;
+}
+
+export async function reorderQuickKeys(
+  businessId: string,
+  userId: string,
+  ids: string[],
+  ipAddress?: string,
+  userAgent?: string
+): Promise<QuickKeyItem[]> {
+  const keys = await getQuickKeys(businessId);
+  const byId = new Map(keys.map(k => [k.id, k]));
+  const reordered: QuickKeyItem[] = [];
+
+  ids.forEach((id, index) => {
+    const item = byId.get(id);
+    if (item) {
+      item.sortOrder = index;
+      reordered.push(item);
+      byId.delete(id);
+    }
+  });
+  // Append any keys missing from the id list (defensive)
+  byId.forEach(item => {
+    item.sortOrder = reordered.length;
+    reordered.push(item);
+  });
+
+  const updated = sortQuickKeys(reordered);
+  await updateSettings(businessId, userId, SETTINGS_KEYS.POS_QUICK_KEYS, updated, ipAddress, userAgent);
+  return updated;
+}
+
+export async function resetQuickKeys(
+  businessId: string,
+  userId: string,
+  ipAddress?: string,
+  userAgent?: string
+): Promise<QuickKeyItem[]> {
+  await updateSettings(businessId, userId, SETTINGS_KEYS.POS_QUICK_KEYS, [], ipAddress, userAgent);
+  return [];
+}
+
+// ==========================================
+// POS SHORTCUTS
+// ==========================================
+
+export async function getShortcuts(businessId: string): Promise<ShortcutItem[]> {
+  const stored = await getSettings<ShortcutItem[]>(businessId, SETTINGS_KEYS.POS_SHORTCUTS, DEFAULT_SHORTCUTS);
+  return Array.isArray(stored) && stored.length > 0 ? stored : [...DEFAULT_SHORTCUTS];
+}
+
+export async function updateShortcut(
+  businessId: string,
+  userId: string,
+  id: string,
+  key: string,
+  ipAddress?: string,
+  userAgent?: string
+): Promise<ShortcutItem[]> {
+  if (!key || !key.trim()) throw new Error('Key is required');
+
+  const shortcuts = await getShortcuts(businessId);
+  const item = shortcuts.find(sc => sc.id === id);
+  if (!item) throw new Error('Shortcut not found');
+
+  const conflict = shortcuts.find(sc => sc.key === key.trim() && sc.id !== id);
+  if (conflict) throw new Error(`Key "${key.trim()}" is already assigned to "${conflict.description}"`);
+
+  item.key = key.trim();
+  item.isCustom = true;
+
+  await updateSettings(businessId, userId, SETTINGS_KEYS.POS_SHORTCUTS, shortcuts, ipAddress, userAgent);
+  return shortcuts;
+}
+
+export async function resetShortcuts(
+  businessId: string,
+  userId: string,
+  ipAddress?: string,
+  userAgent?: string
+): Promise<ShortcutItem[]> {
+  const defaults = [...DEFAULT_SHORTCUTS];
+  await updateSettings(businessId, userId, SETTINGS_KEYS.POS_SHORTCUTS, defaults, ipAddress, userAgent);
+  return defaults;
 }
 
 // ==========================================

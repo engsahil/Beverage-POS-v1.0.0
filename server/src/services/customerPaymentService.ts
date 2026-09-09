@@ -172,3 +172,43 @@ export async function getCustomerPayments(
     },
   };
 }
+
+/**
+ * List recent customer payments across all customers (for the
+ * Customer Payments admin page).
+ */
+export async function listCustomerPayments(
+  businessId: string,
+  params: {
+    page?: number;
+    limit?: number;
+  } = {}
+) {
+  const { page = 1, limit = 20 } = params;
+
+  const where = { businessId };
+
+  const [payments, total] = await Promise.all([
+    prisma.customerPayment.findMany({
+      where,
+      include: {
+        customer: { select: { id: true, name: true } },
+        user: { select: { id: true, username: true, fullName: true } },
+      },
+      orderBy: { paymentDate: 'desc' },
+      skip: (page - 1) * limit,
+      take: limit,
+    }),
+    prisma.customerPayment.count({ where }),
+  ]);
+
+  return {
+    data: payments,
+    meta: {
+      page,
+      limit,
+      total,
+      totalPages: Math.ceil(total / limit),
+    },
+  };
+}

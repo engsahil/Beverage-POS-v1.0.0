@@ -93,6 +93,7 @@ export default function OpeningStock() {
         ...form,
         variantId: form.variantId || null,
         batchNumber: form.batchNumber || null,
+        reason: form.notes || 'Opening stock entry',
         notes: form.notes || null,
       });
       setShowForm(false);

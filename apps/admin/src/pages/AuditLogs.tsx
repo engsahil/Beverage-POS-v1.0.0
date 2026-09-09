@@ -27,16 +27,9 @@ export default function AuditLogs() {
   const loadLogs = async () => {
     try {
       setLoading(true);
-      const { data } = await api.get('/dashboard', { params: { page, limit: perPage, ...filter } });
-      // Audit logs may be at a different endpoint; try direct
-      const logsRes = await api.get('/audit-logs', { params: { page, limit: perPage, ...filter } }).catch(() => null);
-      if (logsRes?.data?.data) {
-        setLogs(logsRes.data.data);
-        setTotal(logsRes.data.total || 0);
-      } else {
-        // Fallback: use dashboard or empty
-        setLogs([]);
-      }
+      const { data } = await api.get('/audit-logs', { params: { page, limit: perPage, ...filter } });
+      setLogs(data.data || []);
+      setTotal(data.meta?.total || 0);
     } catch (err) {
       setLogs([]);
     } finally { setLoading(false); }

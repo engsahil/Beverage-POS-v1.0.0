@@ -459,3 +459,58 @@ export async function enableVariant(
 
   return updated;
 }
+
+/**
+ * Delete a variant only when it has no transactional history.
+ * Refuses (409) when inventory, movements, purchases, counts, transfers,
+ * batches, sales or claims reference it — use disable instead.
+ */
+export async function deleteVariant(
+  variantId: string,
+  businessId: string,
+  userId: string,
+  ipAddress?: string,
+  userAgent?: string
+) {
+  const variant = await prisma.productVariant.findFirst({
+    where: { id: variantId, product: { businessId } },
+    select: { id: true, name: true, productId: true },
+  });
+
+  if (!variant) {
+    throw new Error('Variant not found');
+  }
+
+  const [inventories, movements, purchases, counts, transfers, batches, sales, claims, adjustments] =
+    await Promise.all([
+      prisma.inventory.count({ where: { variantId } }),
+      prisma.stockMovement.count({ where: { variantId } }),
+      prisma.purchaseItem.count({ where: { variantId } }),
+      prisma.stockCountItem.count({ where: { variantId } }),
+      prisma.transferItem.count({ where: { variantId } }),
+      prisma.stockBatch.count({ where: { variantId } }),
+      prisma.saleItem.count({ where: { variantId } }),
+      prisma.claimItem.count({ where: { variantId } }),
+      prisma.stockAdjustment.count({ where: { variantId } }),
+    ]);
+
+  const refs = inventories + movements + purchases + counts + transfers + batches + sales + claims + adjustments;
+  if (refs > 0) {
+    throw new Error(
+      'Variant has transaction history and cannot be deleted. Disable it instead.'
+    );
+  }
+
+  await prisma.productVariant.delete({ where: { id: variantId } });
+
+  await createAuditLog({
+    businessId,
+    userId,
+    action: 'VARIANT_DELETED',
+    entityType: 'variant',
+    entityId: variantId,
+    oldValues: { name: variant.name, productId: variant.productId },
+    ipAddress,
+    userAgent,
+  });
+}

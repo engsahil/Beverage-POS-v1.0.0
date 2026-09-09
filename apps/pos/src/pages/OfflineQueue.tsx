@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
+import api from '../api';
 import {
   IconWifi,
   IconWifiOff,
@@ -13,15 +14,50 @@ import {
 } from '../components/Icons';
 import { Link } from 'react-router-dom';
 
-interface QueuedItem {
+interface StoredQueueItem {
   id: string;
   operation: string;
-  endpoint: string;
-  method: string;
-  body: string | null;
+  payload: Record<string, unknown>;
   createdAt: string;
   retries: number;
   lastError: string | null;
+}
+
+interface QueuedItem extends StoredQueueItem {
+  endpoint: string;
+  method: string;
+}
+
+// Shared with the POS checkout offline fallback — keep this key in sync.
+export const OFFLINE_QUEUE_KEY = 'pos_offline_queue_v1';
+
+const OPERATION_META: Record<string, { label: string; endpoint: string; method: string }> = {
+  SALE_CREATE: { label: 'Retail Sale', endpoint: '/sales/checkout', method: 'POST' },
+  SALE_VOID: { label: 'Sale Void', endpoint: '/sales/:id/void', method: 'POST' },
+  SHIFT_CLOSE: { label: 'Shift Close', endpoint: '/shifts/:id/close', method: 'POST' },
+  CUSTOMER_PAYMENT_CREATE: { label: 'Credit Payment', endpoint: '/customers/:id/payments', method: 'POST' },
+  CUSTOMER_CREATE: { label: 'Customer Record', endpoint: '/customers', method: 'POST' },
+  DAILY_RECORD: { label: 'Daily Record', endpoint: '/daily-records', method: 'POST' },
+};
+
+function readStoredQueue(): StoredQueueItem[] {
+  try {
+    const raw = localStorage.getItem(OFFLINE_QUEUE_KEY);
+    if (!raw) return [];
+    const parsed = JSON.parse(raw);
+    return Array.isArray(parsed) ? parsed : [];
+  } catch {
+    return [];
+  }
+}
+
+function writeStoredQueue(items: StoredQueueItem[]) {
+  localStorage.setItem(OFFLINE_QUEUE_KEY, JSON.stringify(items));
+}
+
+function toDisplayItem(item: StoredQueueItem): QueuedItem {
+  const meta = OPERATION_META[item.operation] || { label: item.operation, endpoint: item.operation, method: 'POST' };
+  return { ...item, endpoint: meta.endpoint, method: meta.method };
 }
 
 export default function OfflineQueue() {
@@ -36,9 +72,7 @@ export default function OfflineQueue() {
   const loadQueue = useCallback(async () => {
     try {
       setLoading(true);
-      const res = await fetch('/api/v1/offline/queue');
-      const data = await res.json();
-      setQueue(data.data || []);
+      setQueue(readStoredQueue().map(toDisplayItem));
     } catch (err) {
       console.error('Failed to load queue:', err);
     } finally {
@@ -48,10 +82,10 @@ export default function OfflineQueue() {
 
   const loadSettings = useCallback(async () => {
     try {
-      const res = await fetch('/api/v1/settings/offline');
-      const data = await res.json();
-      setAutoSync(data.data?.autoSync ?? true);
-      setSyncInterval(data.data?.syncInterval ?? 30);
+      const { data } = await api.get('/settings/pos-offline');
+      const settings = data.data || {};
+      setAutoSync(settings.autoSync ?? true);
+      setSyncInterval(settings.syncInterval ?? 30);
     } catch (err) {
       console.error('Failed to load settings:', err);
     }
@@ -72,6 +106,44 @@ export default function OfflineQueue() {
     };
   }, [loadQueue, loadSettings]);
 
+  const handleSync = useCallback(async () => {
+    const stored = readStoredQueue();
+    if (!navigator.onLine || stored.length === 0 || syncing) return;
+
+    try {
+      setSyncing(true);
+      const { data } = await api.post('/sync/process', {
+        operations: stored.map((item) => ({
+          operationId: item.id,
+          idempotencyKey: item.id,
+          operationType: item.operation,
+          entityType: 'sale',
+          payload: item.payload,
+          createdAt: item.createdAt,
+        })),
+      });
+
+      const results: Array<{ operationId: string; success: boolean; error?: string }> =
+        data.data?.results || [];
+      const failed = new Map(results.filter((r) => !r.success).map((r) => [r.operationId, r.error || 'Sync failed']));
+
+      const remaining = stored
+        .filter((item) => failed.has(item.id))
+        .map((item) => ({
+          ...item,
+          retries: item.retries + 1,
+          lastError: failed.get(item.id) || 'Sync failed',
+        }));
+      writeStoredQueue(remaining);
+      setQueue(remaining.map(toDisplayItem));
+      setLastSync(new Date().toLocaleTimeString());
+    } catch (err) {
+      console.error('Sync error:', err);
+    } finally {
+      setSyncing(false);
+    }
+  }, [syncing]);
+
   useEffect(() => {
     if (!autoSync || !isOnline || queue.length === 0) return;
 
@@ -80,32 +152,13 @@ export default function OfflineQueue() {
     }, syncInterval * 1000);
 
     return () => clearInterval(interval);
-  }, [autoSync, isOnline, queue.length, syncInterval]);
-
-  const handleSync = async () => {
-    if (!isOnline || queue.length === 0 || syncing) return;
-
-    try {
-      setSyncing(true);
-      const res = await fetch('/api/v1/sync/process', { method: 'POST' });
-      const data = await res.json();
-
-      if (data.success) {
-        setLastSync(new Date().toLocaleTimeString());
-        loadQueue();
-      }
-    } catch (err) {
-      console.error('Sync error:', err);
-    } finally {
-      setSyncing(false);
-    }
-  };
+  }, [autoSync, isOnline, queue.length, syncInterval, handleSync]);
 
   const handleClearQueue = async () => {
     if (!confirm(`Clear all ${queue.length} queued operations? This will discard un-synced transactions.`)) return;
 
     try {
-      await fetch('/api/v1/offline/queue/clear', { method: 'POST' });
+      writeStoredQueue([]);
       loadQueue();
     } catch (err) {
       console.error('Failed to clear queue:', err);
@@ -117,7 +170,7 @@ export default function OfflineQueue() {
     if (!confirm('Remove this queued transaction record?')) return;
 
     try {
-      await fetch(`/api/v1/offline/queue/${id}`, { method: 'DELETE' });
+      writeStoredQueue(readStoredQueue().filter((item) => item.id !== id));
       loadQueue();
     } catch (err) {
       console.error('Failed to remove item:', err);
@@ -125,15 +178,7 @@ export default function OfflineQueue() {
   };
 
   const getOperationLabel = (op: string): string => {
-    const labels: Record<string, string> = {
-      sale: 'Retail Sale',
-      'sale.void': 'Sale Void',
-      'shift.close': 'Shift Close',
-      'daily.record': 'Daily Record',
-      customer: 'Customer Record',
-      'customer.payment': 'Credit Payment',
-    };
-    return labels[op] || op;
+    return OPERATION_META[op]?.label || op;
   };
 
   const getMethodBadgeStyle = (method: string) => {
@@ -360,7 +405,7 @@ export default function OfflineQueue() {
         >
           {loading ? (
             <div style={{ textAlign: 'center', padding: '60px 20px', color: 'var(--text-subtle)' }}>
-              Polling local IndexedDB queue...
+              Loading offline queue...
             </div>
           ) : queue.length === 0 ? (
             <div style={{ textAlign: 'center', padding: '60px 20px', color: 'var(--text-subtle)' }}>

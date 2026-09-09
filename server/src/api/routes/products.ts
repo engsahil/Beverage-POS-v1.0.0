@@ -613,4 +613,58 @@ router.post('/:productId/variants/:variantId/enable', authorize('products.edit')
   }
 });
 
+/**
+ * DELETE /products/:productId/variants/:variantId
+ * Delete a variant (only when it has no transaction history)
+ */
+router.delete('/:productId/variants/:variantId', authorize('products.delete'), async (req: Request, res: Response) => {
+  try {
+    if (!req.user) {
+      res.status(401).json({ success: false, error: { code: 'UNAUTHORIZED' } });
+      return;
+    }
+
+    const ipAddress = req.ip || req.socket.remoteAddress;
+    const userAgent = req.get('user-agent');
+
+    await variantService.deleteVariant(
+      req.params.variantId as string,
+      req.user.businessId,
+      req.user.sub,
+      ipAddress,
+      userAgent
+    );
+
+    res.status(200).json({
+      success: true,
+      message: 'Variant deleted',
+    });
+  } catch (error) {
+    if (error instanceof Error) {
+      if (error.message === 'Variant not found') {
+        res.status(404).json({
+          success: false,
+          error: { code: 'NOT_FOUND', message: error.message },
+        });
+        return;
+      }
+      if (error.message.includes('cannot be deleted')) {
+        res.status(409).json({
+          success: false,
+          error: { code: 'CONFLICT', message: error.message },
+        });
+        return;
+      }
+    }
+
+    res.status(500).json({
+      success: false,
+      error: {
+        code: 'DELETE_ERROR',
+        message: 'Failed to delete variant',
+      },
+    });
+  }
+});
+
 export default router;

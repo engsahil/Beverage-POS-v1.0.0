@@ -40,13 +40,24 @@ export default function ShiftManager({ onShiftChange }: ShiftManagerProps) {
     loadActiveShift();
   }, []);
 
+  // Backend returns openingCash/openingDate (Decimal serialized as string);
+  // normalize to the shape this component renders.
+  const normalizeShift = (s: any): Shift => ({
+    ...s,
+    openingAmount: Number(s.openingCash ?? s.openingAmount ?? 0),
+    openedAt: s.openingDate ?? s.openedAt ?? s.createdAt,
+  });
+
   const loadActiveShift = async () => {
     try {
       setLoading(true);
-      const { data } = await api.get('/shifts/active');
+      const { data } = await api.get('/shifts/active', {
+        params: user?.branchId ? { branchId: user.branchId } : undefined,
+      });
       if (data.data) {
-        setShift(data.data);
-        onShiftChange(data.data);
+        const normalized = normalizeShift(data.data);
+        setShift(normalized);
+        onShiftChange(normalized);
       }
     } catch (err: any) {
       if (err.response?.status !== 404) {
@@ -70,8 +81,9 @@ export default function ShiftManager({ onShiftChange }: ShiftManagerProps) {
         openingCash: parseFloat(openingAmount),
         openingNotes: notes || undefined,
       });
-      setShift(data.data);
-      onShiftChange(data.data);
+      const normalized = normalizeShift(data.data);
+      setShift(normalized);
+      onShiftChange(normalized);
       setShowOpenForm(false);
       setOpeningAmount('');
       setNotes('');

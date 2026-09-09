@@ -57,6 +57,16 @@ export async function validateCheckout(
   const errors: string[] = [];
   const warnings: string[] = [];
 
+  if (!input.branchId) {
+    errors.push('Branch is required to complete checkout');
+    return { isValid: false, errors, warnings };
+  }
+
+  if (!input.items || input.items.length === 0) {
+    errors.push('Cart is empty');
+    return { isValid: false, errors, warnings };
+  }
+
   for (const item of input.items) {
     const product = await prisma.product.findFirst({
       where: { id: item.productId, businessId: input.businessId },

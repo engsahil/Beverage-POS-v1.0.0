@@ -28,6 +28,7 @@ router.post('/checkout', authorize('sales.create'), async (req: Request, res: Re
       {
         ...req.body,
         businessId: req.user.businessId,
+        branchId: req.body.branchId || req.user.branchId,
         cashierId: req.user.sub,
       },
       ipAddress,

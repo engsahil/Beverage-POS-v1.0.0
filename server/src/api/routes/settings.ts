@@ -732,4 +732,202 @@ router.put('/pos-scanner', sensitiveLimiter, authorize('settings.manage'), async
   }
 });
 
+// ==========================================
+// POS QUICK KEYS
+// ==========================================
+
+router.get('/pos-quick-keys', authorize('settings.view'), async (req: Request, res: Response) => {
+  try {
+    if (!req.user) {
+      return res.status(401).json({ success: false, error: { code: 'UNAUTHORIZED' } });
+    }
+    const keys = await settingsService.getQuickKeysEnriched(req.user.businessId);
+    return res.json({ success: true, data: keys });
+  } catch (error) {
+    return res.status(500).json({
+      success: false,
+      error: {
+        code: 'QUICK_KEYS_FETCH_FAILED',
+        message: error instanceof Error ? error.message : 'Failed to fetch quick keys',
+      },
+    });
+  }
+});
+
+router.post('/pos-quick-keys', sensitiveLimiter, authorize('settings.manage'), async (req: Request, res: Response) => {
+  try {
+    if (!req.user) {
+      return res.status(401).json({ success: false, error: { code: 'UNAUTHORIZED' } });
+    }
+    const ipAddress = req.ip || req.socket.remoteAddress;
+    const userAgent = req.get('user-agent');
+    const keys = await settingsService.createQuickKey(
+      req.user.businessId, req.user.sub, req.body, ipAddress, userAgent
+    );
+    return res.status(201).json({ success: true, data: keys });
+  } catch (error) {
+    return res.status(400).json({
+      success: false,
+      error: {
+        code: 'QUICK_KEY_CREATE_FAILED',
+        message: error instanceof Error ? error.message : 'Failed to create quick key',
+      },
+    });
+  }
+});
+
+router.post('/pos-quick-keys/reset', sensitiveLimiter, authorize('settings.manage'), async (req: Request, res: Response) => {
+  try {
+    if (!req.user) {
+      return res.status(401).json({ success: false, error: { code: 'UNAUTHORIZED' } });
+    }
+    const ipAddress = req.ip || req.socket.remoteAddress;
+    const userAgent = req.get('user-agent');
+    const keys = await settingsService.resetQuickKeys(
+      req.user.businessId, req.user.sub, ipAddress, userAgent
+    );
+    return res.json({ success: true, data: keys });
+  } catch (error) {
+    return res.status(400).json({
+      success: false,
+      error: {
+        code: 'QUICK_KEYS_RESET_FAILED',
+        message: error instanceof Error ? error.message : 'Failed to reset quick keys',
+      },
+    });
+  }
+});
+
+router.put('/pos-quick-keys/reorder', sensitiveLimiter, authorize('settings.manage'), async (req: Request, res: Response) => {
+  try {
+    if (!req.user) {
+      return res.status(401).json({ success: false, error: { code: 'UNAUTHORIZED' } });
+    }
+    const ipAddress = req.ip || req.socket.remoteAddress;
+    const userAgent = req.get('user-agent');
+    const keys = await settingsService.reorderQuickKeys(
+      req.user.businessId, req.user.sub, req.body?.ids || [], ipAddress, userAgent
+    );
+    return res.json({ success: true, data: keys });
+  } catch (error) {
+    return res.status(400).json({
+      success: false,
+      error: {
+        code: 'QUICK_KEYS_REORDER_FAILED',
+        message: error instanceof Error ? error.message : 'Failed to reorder quick keys',
+      },
+    });
+  }
+});
+
+router.patch('/pos-quick-keys/:id', sensitiveLimiter, authorize('settings.manage'), async (req: Request, res: Response) => {
+  try {
+    if (!req.user) {
+      return res.status(401).json({ success: false, error: { code: 'UNAUTHORIZED' } });
+    }
+    const ipAddress = req.ip || req.socket.remoteAddress;
+    const userAgent = req.get('user-agent');
+    const keys = await settingsService.updateQuickKey(
+      req.user.businessId, req.user.sub, req.params.id as string, req.body, ipAddress, userAgent
+    );
+    return res.json({ success: true, data: keys });
+  } catch (error) {
+    return res.status(400).json({
+      success: false,
+      error: {
+        code: 'QUICK_KEY_UPDATE_FAILED',
+        message: error instanceof Error ? error.message : 'Failed to update quick key',
+      },
+    });
+  }
+});
+
+router.delete('/pos-quick-keys/:id', sensitiveLimiter, authorize('settings.manage'), async (req: Request, res: Response) => {
+  try {
+    if (!req.user) {
+      return res.status(401).json({ success: false, error: { code: 'UNAUTHORIZED' } });
+    }
+    const ipAddress = req.ip || req.socket.remoteAddress;
+    const userAgent = req.get('user-agent');
+    const keys = await settingsService.deleteQuickKey(
+      req.user.businessId, req.user.sub, req.params.id as string, ipAddress, userAgent
+    );
+    return res.json({ success: true, data: keys });
+  } catch (error) {
+    return res.status(400).json({
+      success: false,
+      error: {
+        code: 'QUICK_KEY_DELETE_FAILED',
+        message: error instanceof Error ? error.message : 'Failed to delete quick key',
+      },
+    });
+  }
+});
+
+// ==========================================
+// POS SHORTCUTS
+// ==========================================
+
+router.get('/pos-shortcuts', authorize('settings.view'), async (req: Request, res: Response) => {
+  try {
+    if (!req.user) {
+      return res.status(401).json({ success: false, error: { code: 'UNAUTHORIZED' } });
+    }
+    const shortcuts = await settingsService.getShortcuts(req.user.businessId);
+    return res.json({ success: true, data: shortcuts });
+  } catch (error) {
+    return res.status(500).json({
+      success: false,
+      error: {
+        code: 'SHORTCUTS_FETCH_FAILED',
+        message: error instanceof Error ? error.message : 'Failed to fetch shortcuts',
+      },
+    });
+  }
+});
+
+router.patch('/pos-shortcuts/:id', sensitiveLimiter, authorize('settings.manage'), async (req: Request, res: Response) => {
+  try {
+    if (!req.user) {
+      return res.status(401).json({ success: false, error: { code: 'UNAUTHORIZED' } });
+    }
+    const ipAddress = req.ip || req.socket.remoteAddress;
+    const userAgent = req.get('user-agent');
+    const shortcuts = await settingsService.updateShortcut(
+      req.user.businessId, req.user.sub, req.params.id as string, req.body?.key, ipAddress, userAgent
+    );
+    return res.json({ success: true, data: shortcuts });
+  } catch (error) {
+    return res.status(400).json({
+      success: false,
+      error: {
+        code: 'SHORTCUT_UPDATE_FAILED',
+        message: error instanceof Error ? error.message : 'Failed to update shortcut',
+      },
+    });
+  }
+});
+
+router.post('/pos-shortcuts/reset', sensitiveLimiter, authorize('settings.manage'), async (req: Request, res: Response) => {
+  try {
+    if (!req.user) {
+      return res.status(401).json({ success: false, error: { code: 'UNAUTHORIZED' } });
+    }
+    const ipAddress = req.ip || req.socket.remoteAddress;
+    const userAgent = req.get('user-agent');
+    const shortcuts = await settingsService.resetShortcuts(
+      req.user.businessId, req.user.sub, ipAddress, userAgent
+    );
+    return res.json({ success: true, data: shortcuts });
+  } catch (error) {
+    return res.status(400).json({
+      success: false,
+      error: {
+        code: 'SHORTCUTS_RESET_FAILED',
+        message: error instanceof Error ? error.message : 'Failed to reset shortcuts',
+      },
+    });
+  }
+});
+
 export default router;

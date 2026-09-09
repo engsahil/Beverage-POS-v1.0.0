@@ -399,6 +399,69 @@ export async function createOpeningStock(
 }
 
 /**
+ * List opening stock entries (OPENING_STOCK movements, newest first)
+ */
+export async function getOpeningStockEntries(
+  businessId: string,
+  params: {
+    page?: number;
+    limit?: number;
+    branchId?: string;
+  } = {}
+) {
+  const { page = 1, limit = 50, branchId } = params;
+
+  const where: Record<string, unknown> = {
+    businessId,
+    movementType: MOVEMENT_TYPES.OPENING_STOCK,
+  };
+  if (branchId) where.branchId = branchId;
+
+  const [movements, total] = await Promise.all([
+    prisma.stockMovement.findMany({
+      where,
+      include: {
+        product: { select: { id: true, name: true } },
+        variant: { select: { id: true, name: true } },
+        branch: { select: { id: true, name: true } },
+        user: { select: { id: true, fullName: true } },
+      },
+      orderBy: { createdAt: 'desc' },
+      skip: (page - 1) * limit,
+      take: limit,
+    }),
+    prisma.stockMovement.count({ where }),
+  ]);
+
+  // NOTE: unit cost / batch numbers are not tracked on opening stock
+  // movements, so they are returned as 0 / null rather than fabricated.
+  return {
+    data: movements.map((m: any) => ({
+      id: m.id,
+      productId: m.productId,
+      product: m.product,
+      variantId: m.variantId,
+      variant: m.variant,
+      branchId: m.branchId,
+      branch: m.branch,
+      quantity: Number(m.quantity),
+      unitCost: 0,
+      totalCost: 0,
+      batchNumber: null,
+      notes: m.notes,
+      createdAt: m.createdAt,
+      user: m.user,
+    })),
+    meta: {
+      page,
+      limit,
+      total,
+      totalPages: Math.ceil(total / limit),
+    },
+  };
+}
+
+/**
  * Manual stock adjustment (increase or decrease)
  */
 export async function createStockAdjustment(

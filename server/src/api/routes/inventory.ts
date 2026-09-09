@@ -140,6 +140,40 @@ router.get('/:branchId/:productId', authorize('inventory.view'), async (req: Req
 // ==========================================
 
 /**
+ * GET /inventory/opening-stock
+ * List recorded opening stock entries (newest first)
+ */
+router.get('/opening-stock', authorize('inventory.view'), async (req: Request, res: Response) => {
+  try {
+    if (!req.user) {
+      res.status(401).json({ success: false, error: { code: 'UNAUTHORIZED' } });
+      return;
+    }
+
+    const { page, limit, branchId } = req.query as Record<string, string>;
+
+    const result = await inventoryService.getOpeningStockEntries(req.user.businessId, {
+      page: parseInt(page) || 1,
+      limit: Math.min(parseInt(limit) || 50, 200),
+      branchId: branchId || undefined,
+    });
+
+    res.status(200).json({
+      success: true,
+      ...result,
+    });
+  } catch {
+    res.status(500).json({
+      success: false,
+      error: {
+        code: 'FETCH_ERROR',
+        message: 'Failed to fetch opening stock entries',
+      },
+    });
+  }
+});
+
+/**
  * POST /inventory/opening-stock
  * Create opening stock for a product/variant
  */

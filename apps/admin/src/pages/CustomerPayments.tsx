@@ -67,8 +67,9 @@ export default function CustomerPayments() {
       return;
     }
 
-    if (selectedCustomer && form.amount > selectedCustomer.currentBalance) {
-      if (!confirm(`Payment amount (Rs. ${form.amount.toFixed(2)}) exceeds customer balance (Rs. ${selectedCustomer.currentBalance.toFixed(2)}). Continue?`)) {
+    const balance = Number(selectedCustomer?.currentBalance ?? 0);
+    if (selectedCustomer && form.amount > balance) {
+      if (!confirm(`Payment amount (Rs. ${form.amount.toFixed(2)}) exceeds customer balance (Rs. ${balance.toFixed(2)}). Continue?`)) {
         return;
       }
     }

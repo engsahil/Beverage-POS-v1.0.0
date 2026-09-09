@@ -22,11 +22,12 @@ router.get('/', authorize('customers.view'), async (req: Request, res: Response)
       return;
     }
 
-    const { search, status, page, limit } = req.query as Record<string, string>;
+    const { search, status, hasBalance, page, limit } = req.query as Record<string, string>;
 
     const result = await customerService.searchCustomers(req.user.businessId, {
       search,
       status,
+      hasBalance: hasBalance === 'true' || hasBalance === '1',
       page: parseInt(page) || 1,
       limit: parseInt(limit) || 20,
     });

@@ -65,7 +65,7 @@ router.get('/active', authorize('shifts.view'), async (req: Request, res: Respon
       return;
     }
 
-    const { branchId } = req.query as Record<string, string>;
+    const branchId = (req.query as Record<string, string>).branchId || req.user.branchId;
 
     if (!branchId) {
       res.status(400).json({

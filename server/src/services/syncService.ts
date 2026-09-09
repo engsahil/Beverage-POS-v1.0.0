@@ -193,9 +193,10 @@ async function processSaleCreate(
       payments: payload.payments.map((p: any) => ({
         paymentMethod: p.paymentMethod,
         amount: Number(p.amount),
-        referenceNumber: p.reference,
-        cashReceived: p.paymentMethod === 'CASH' ? Number(p.amount) : undefined,
+        referenceNumber: p.referenceNumber || p.reference,
+        cashReceived: p.paymentMethod === 'CASH' ? Number(p.cashReceived ?? p.amount) : undefined,
       })),
+      saleDiscount: payload.saleDiscount,
       idempotencyKey: operation.idempotencyKey,
       notes: payload.notes,
     });

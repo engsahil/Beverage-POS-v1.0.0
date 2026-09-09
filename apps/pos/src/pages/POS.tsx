@@ -145,7 +145,18 @@ export default function POS() {
   const loadProducts = async () => {
     try {
       const { data } = await api.get('/products', { params: { limit: 200, isActive: true } });
-      const prods: Product[] = data.data || [];
+      // Prisma Decimals serialize as strings — normalize so cart math/rendering
+      // never crashes on undefined .toFixed or string concatenation.
+      const prods: Product[] = (data.data || []).map((p: any) => ({
+        ...p,
+        sellingPrice: Number(p.sellingPrice ?? 0),
+        taxRate: Number(p.taxRate ?? 0),
+        maxDiscountPercent: Number(p.maxDiscountPercent ?? 0),
+        variants: (p.variants || []).map((v: any) => ({
+          ...v,
+          sellingPrice: Number(v.sellingPrice ?? 0),
+        })),
+      }));
       setProducts(prods);
 
       const cats = Array.from(
@@ -315,30 +326,33 @@ export default function POS() {
       return;
     }
 
-    try {
-      const paymentData = payments.map((p) => ({
-        paymentMethod: p.method,
-        amount: p.amount,
-        referenceNumber: p.referenceNumber || null,
-        cashReceived: p.method === 'CASH' ? p.cashReceived || p.amount : null,
-        cashChange: p.method === 'CASH' ? Math.max(0, (p.cashReceived || p.amount) - p.amount) : null,
-      }));
+    const paymentData = payments.map((p) => ({
+      paymentMethod: p.method,
+      amount: p.amount,
+      referenceNumber: p.referenceNumber || null,
+      cashReceived: p.method === 'CASH' ? p.cashReceived || p.amount : null,
+      cashChange: p.method === 'CASH' ? Math.max(0, (p.cashReceived || p.amount) - p.amount) : null,
+    }));
 
-      const { data } = await api.post('/sales/checkout', {
-        items: cart.map((item) => ({
-          productId: item.productId,
-          variantId: item.variantId,
-          quantity: item.quantity,
-          unitPrice: item.unitPrice,
-          discountAmount: item.discountAmount,
+    const checkoutPayload = {
+      items: cart.map((item) => ({
+        productId: item.productId,
+        variantId: item.variantId,
+        quantity: item.quantity,
+        unitPrice: item.unitPrice,
+        discountAmount: item.discountAmount,
         })),
-        discountAmount: orderDiscountAmount,
-        discountType: orderDiscount > 0 ? orderDiscountType : null,
-        discountValue: orderDiscount > 0 ? orderDiscount : null,
-        payments: paymentData,
-        customerId: selectedCustomer?.id || null,
-        shiftId: activeShift?.id,
-      });
+      saleDiscount:
+        orderDiscount > 0
+          ? { discountType: orderDiscountType, discountValue: orderDiscount }
+          : undefined,
+      payments: paymentData,
+      customerId: selectedCustomer?.id || null,
+      shiftId: activeShift?.id,
+    };
+
+    try {
+      const { data } = await api.post('/sales/checkout', checkoutPayload);
 
       setShowReceipt(data.data.id);
       setCart([]);
@@ -348,7 +362,42 @@ export default function POS() {
       setPayments([{ method: 'CASH', amount: 0 }]);
       setShowPaymentModal(false);
     } catch (err: any) {
-      setError(err.response?.data?.error?.message || 'Transaction checkout failed');
+      // Network failure (offline): queue the sale locally so it can be synced
+      // later from the Offline Queue page instead of losing the transaction.
+      const isNetworkError = !err.response && (err.request || !navigator.onLine);
+      if (isNetworkError) {
+        try {
+          const KEY = 'pos_offline_queue_v1';
+          const raw = localStorage.getItem(KEY);
+          const queued = raw ? JSON.parse(raw) : [];
+          queued.push({
+            id: `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+            operation: 'SALE_CREATE',
+            payload: {
+              ...checkoutPayload,
+              payments: paymentData.map((p: any) => ({
+                ...p,
+                reference: p.referenceNumber || undefined,
+              })),
+            },
+            createdAt: new Date().toISOString(),
+            retries: 0,
+            lastError: null,
+          });
+          localStorage.setItem(KEY, JSON.stringify(queued));
+          setError('You are offline. Sale queued — it will sync from the Offline Queue page.');
+          setCart([]);
+          setSearch('');
+          setSelectedCustomer(null);
+          setOrderDiscount(0);
+          setPayments([{ method: 'CASH', amount: 0 }]);
+          setShowPaymentModal(false);
+        } catch {
+          setError('Transaction checkout failed (offline, queue unavailable)');
+        }
+      } else {
+        setError(err.response?.data?.error?.message || 'Transaction checkout failed');
+      }
     } finally {
       setLoading(false);
     }

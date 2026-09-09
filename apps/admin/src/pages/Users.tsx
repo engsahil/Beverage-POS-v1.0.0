@@ -264,6 +264,7 @@ export default function Users() {
                   onChange={(e) => setForm({ ...form, password: e.target.value })}
                   style={{ width: '100%', padding: '8px 12px', border: '1px solid #d1d5db', borderRadius: 6, fontSize: 14 }}
                 />
+                <div style={{ fontSize: 11, color: '#6b7280', marginTop: 4 }}>Min 8 chars with uppercase, lowercase, number &amp; special character</div>
               </div>
             </div>
 

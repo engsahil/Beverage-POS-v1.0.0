@@ -46,6 +46,8 @@ import dataManagementRoutes from './api/routes/dataManagement.js';
 import settingsRoutes from './api/routes/settings.js';
 import performanceRoutes from './api/routes/performance.js';
 import branchRoutes from './api/routes/branches.js';
+import customerPaymentRoutes from './api/routes/customerPayments.js';
+import auditLogRoutes from './api/routes/auditLogs.js';
 
 const app = express();
 const httpServer = createServer(app);
@@ -141,6 +143,8 @@ app.use('/api/v1/data', dataManagementRoutes);
 app.use('/api/v1/settings', settingsRoutes);
 app.use('/api/v1/performance', performanceRoutes);
 app.use('/api/v1/branches', branchRoutes);
+app.use('/api/v1/customer-payments', customerPaymentRoutes);
+app.use('/api/v1/audit-logs', auditLogRoutes);
 
 // Webhook routes (no authentication)
 app.use('/webhooks', webhookRoutes);

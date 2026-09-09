@@ -179,6 +179,51 @@ async function main() {
 
     // Branches (reference data for transfers, stock counts, filters)
     { name: 'branches.view', module: 'branches', action: 'view', description: 'View branches' },
+
+    // Claims workflow
+    { name: 'claims.create', module: 'claims', action: 'create', description: 'Create claims' },
+    { name: 'claims.edit', module: 'claims', action: 'edit', description: 'Edit claims' },
+    { name: 'claims.review', module: 'claims', action: 'review', description: 'Review claims' },
+    { name: 'claims.approve', module: 'claims', action: 'approve', description: 'Approve or reject claims' },
+
+    // Commissions workflow
+    { name: 'commission.create', module: 'commission', action: 'create', description: 'Create commission records' },
+    { name: 'commission.edit', module: 'commission', action: 'edit', description: 'Edit commission records' },
+    { name: 'commission.approve', module: 'commission', action: 'approve', description: 'Approve or reject commissions' },
+
+    // Daily open/close records
+    { name: 'daily_open_close.view', module: 'daily_open_close', action: 'view', description: 'View daily records' },
+    { name: 'daily_open_close.manage', module: 'daily_open_close', action: 'manage', description: 'Open and close daily records' },
+
+    // Expense categories & management
+    { name: 'expense_categories.view', module: 'expense_categories', action: 'view', description: 'View expense categories' },
+    { name: 'expense_categories.manage', module: 'expense_categories', action: 'manage', description: 'Manage expense categories' },
+    { name: 'expenses.manage', module: 'expenses', action: 'manage', description: 'Cancel and manage expenses' },
+
+    // POS offline sync
+    { name: 'pos.offline.sync', module: 'pos', action: 'offline.sync', description: 'Sync offline POS queue' },
+
+    // Granular reports
+    { name: 'reports.sales.view', module: 'reports', action: 'sales.view', description: 'View sales reports' },
+    { name: 'reports.inventory.view', module: 'reports', action: 'inventory.view', description: 'View inventory reports' },
+    { name: 'reports.purchases.view', module: 'reports', action: 'purchases.view', description: 'View purchase reports' },
+    { name: 'reports.expenses.view', module: 'reports', action: 'expenses.view', description: 'View expense reports' },
+    { name: 'reports.customers.view', module: 'reports', action: 'customers.view', description: 'View customer reports' },
+    { name: 'reports.shifts.view', module: 'reports', action: 'shifts.view', description: 'View shift reports' },
+    { name: 'reports.targets.view', module: 'reports', action: 'targets.view', description: 'View target reports' },
+
+    // Targets
+    { name: 'targets.view', module: 'targets', action: 'view', description: 'View sales targets' },
+    { name: 'targets.create', module: 'targets', action: 'create', description: 'Create sales targets' },
+    { name: 'targets.edit', module: 'targets', action: 'edit', description: 'Edit sales targets' },
+    { name: 'targets.manage', module: 'targets', action: 'manage', description: 'Manage sales targets' },
+
+    // WhatsApp
+    { name: 'whatsapp.view', module: 'whatsapp', action: 'view', description: 'View WhatsApp messages' },
+    { name: 'whatsapp.manage', module: 'whatsapp', action: 'manage', description: 'Manage WhatsApp configuration' },
+
+    // System / performance monitoring
+    { name: 'system.view', module: 'system', action: 'view', description: 'View system health and metrics' },
   ];
 
   // Idempotent permission seeding: create only permissions missing for this business,
@@ -291,6 +336,7 @@ async function main() {
             'shifts.view',
             'shifts.open',
             'shifts.close',
+            'pos.offline.sync',
           ],
         },
       },
