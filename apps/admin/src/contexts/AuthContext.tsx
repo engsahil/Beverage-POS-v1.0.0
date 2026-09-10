@@ -20,7 +20,7 @@ interface AuthContextType {
   user: User | null;
   loading: boolean;
   login: (username: string, password: string) => Promise<void>;
-  logout: () => void;
+  logout: () => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType | null>(null);
@@ -30,19 +30,29 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    const storedUser = localStorage.getItem('adminUser');
-    const token = localStorage.getItem('adminAccessToken');
-    
-    if (storedUser && token) {
-      try {
-        setUser(JSON.parse(storedUser));
-      } catch {
-        localStorage.removeItem('adminUser');
-        localStorage.removeItem('adminAccessToken');
-        localStorage.removeItem('adminRefreshToken');
+    let active = true;
+    const restoreSession = async () => {
+      const token = localStorage.getItem('adminAccessToken');
+      const refreshToken = localStorage.getItem('adminRefreshToken');
+      if (!token && !refreshToken) {
+        if (active) setLoading(false);
+        return;
       }
-    }
-    setLoading(false);
+      try {
+        const { data } = await api.get('/auth/me');
+        if (active) {
+          setUser(data.data);
+          localStorage.setItem('adminUser', JSON.stringify(data.data));
+        }
+      } catch {
+        // The interceptor performs one refresh if possible and clears invalid sessions.
+        if (active) setUser(null);
+      } finally {
+        if (active) setLoading(false);
+      }
+    };
+    restoreSession();
+    return () => { active = false; };
   }, []);
 
   const login = async (username: string, password: string) => {
@@ -57,11 +67,18 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setUser(userData);
   };
 
-  const logout = () => {
-    localStorage.removeItem('adminAccessToken');
-    localStorage.removeItem('adminRefreshToken');
-    localStorage.removeItem('adminUser');
-    setUser(null);
+  const logout = async () => {
+    const refreshToken = localStorage.getItem('adminRefreshToken');
+    try {
+      if (refreshToken) await api.post('/auth/logout', { refreshToken });
+    } catch {
+      // Local logout must still complete if the session is already invalid/offline.
+    } finally {
+      localStorage.removeItem('adminAccessToken');
+      localStorage.removeItem('adminRefreshToken');
+      localStorage.removeItem('adminUser');
+      setUser(null);
+    }
   };
 
   return (

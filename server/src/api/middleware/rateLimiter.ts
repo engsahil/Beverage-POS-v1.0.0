@@ -94,8 +94,9 @@ export const importLimiter = rateLimit({
 
 // Backup rate limiter
 export const backupLimiter = rateLimit({
-  windowMs: 60 * 1000, // 1 minute
-  max: 5, // 5 backups per minute
+  windowMs: 60 * 60 * 1000, // 1 hour
+  max: 20, // destructive/expensive backup operations; normal reads are excluded
+  skip: (req) => req.method === 'GET' || req.method === 'HEAD' || req.method === 'OPTIONS',
   message: {
     success: false,
     error: {

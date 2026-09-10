@@ -45,8 +45,13 @@ import webhookRoutes from './api/routes/webhooks.js';
 import dataManagementRoutes from './api/routes/dataManagement.js';
 import settingsRoutes from './api/routes/settings.js';
 import performanceRoutes from './api/routes/performance.js';
+import branchRoutes from './api/routes/branches.js';
+import { synchronizeSystemPermissions } from './services/permissionSyncService.js';
 
 const app = express();
+// Hosted production traffic arrives through one trusted platform proxy. This keeps
+// rate limits per client instead of grouping every POS terminal under proxy IP.
+if (config.NODE_ENV === 'production') app.set('trust proxy', 1);
 const httpServer = createServer(app);
 
 // Initialize Socket.IO
@@ -103,6 +108,7 @@ app.use('/api/v1/auth', authRoutes);
 app.use('/api/v1/users', userRoutes);
 app.use('/api/v1/roles', roleRoutes);
 app.use('/api/v1/permissions', permissionRoutes);
+app.use('/api/v1/branches', branchRoutes);
 app.use('/api/v1/categories', categoryRoutes);
 app.use('/api/v1/units', unitRoutes);
 app.use('/api/v1/products', productRoutes);
@@ -145,8 +151,9 @@ app.use(errorHandler);
 // Start server
 async function startServer() {
   try {
-    // Test database connection
+    // Test database connection and safely backfill permissions introduced by newer releases.
     await prisma.$connect();
+    await synchronizeSystemPermissions();
     logger.info('Database connected successfully');
 
     // Start HTTP server (with Socket.IO)

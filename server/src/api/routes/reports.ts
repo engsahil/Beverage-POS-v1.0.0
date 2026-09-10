@@ -9,6 +9,51 @@ const router = Router();
 router.use(authenticate);
 
 /**
+ * GET /reports/sales
+ * Admin sales summary (contract used by the Reports page).
+ */
+router.get('/sales', authorize('reports.sales.view'), async (req: Request, res: Response) => {
+  try {
+    if (!req.user) {
+      res.status(401).json({ success: false, error: { code: 'UNAUTHORIZED' } });
+      return;
+    }
+    const { branchId, startDate, endDate } = req.query as Record<string, string>;
+    const filters = {
+      businessId: req.user.businessId,
+      branchId,
+      startDate: startDate ? new Date(startDate) : undefined,
+      endDate: endDate ? new Date(`${endDate}T23:59:59.999Z`) : undefined,
+    };
+    const [summary, products] = await Promise.all([
+      reportService.getDailySalesReport(filters),
+      reportService.getTopSellingProducts(filters, 10),
+    ]);
+    res.json({
+      success: true,
+      data: {
+        totalSales: summary.transactionCount,
+        totalRevenue: summary.netSales,
+        totalDiscount: summary.totalDiscount,
+        totalTax: summary.totalTax,
+        averageOrderValue: summary.averageTransactionValue,
+        cashSales: summary.cashSales,
+        cardSales: summary.cardSales,
+        creditSales: summary.creditSales,
+        topProducts: products.map((item: any) => ({
+          name: item.variant ? `${item.product.name} - ${item.variant.name}` : item.product.name,
+          quantity: item.quantitySold,
+          revenue: item.netSales,
+        })),
+        dailyBreakdown: [],
+      },
+    });
+  } catch (error) {
+    res.status(500).json({ success: false, error: { code: 'REPORT_ERROR', message: error instanceof Error ? error.message : 'Failed to generate sales report' } });
+  }
+});
+
+/**
  * GET /reports/sales/daily
  * Daily sales report
  */

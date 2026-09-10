@@ -114,7 +114,7 @@ export const createPermissionSchema = z.object({
   name: z.string()
     .min(2, 'Permission name must be at least 2 characters')
     .max(100, 'Permission name too long')
-    .regex(/^[a-z]+\.[a-z_]+$/, 'Permission name must be in format "module.action"')
+    .regex(/^[a-z][a-z_]*(\.[a-z][a-z_]*)+$/, 'Permission name must be dot-separated, for example "module.action"')
     .trim(),
   module: z.string()
     .min(2, 'Module must be at least 2 characters')

@@ -468,7 +468,7 @@ function Layout({ children }: { children: React.ReactNode }) {
 
             {/* Open POS terminal shortcut */}
             <a
-              href="http://localhost:3000"
+              href={import.meta.env.VITE_POS_URL || '/'}
               target="_blank"
               rel="noreferrer"
               style={{

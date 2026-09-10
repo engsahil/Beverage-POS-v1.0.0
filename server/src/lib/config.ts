@@ -24,7 +24,7 @@ const envSchema = z.object({
   NODE_ENV: z.enum(['development', 'production', 'test']).default(isTest ? 'test' : 'development'),
   CORS_ORIGINS: z.string().default('http://localhost:3000,http://localhost:3001,http://localhost:5173,http://localhost:5174'),
   RATE_LIMIT_WINDOW_MS: z.coerce.number().default(900000),
-  RATE_LIMIT_MAX_REQUESTS: z.coerce.number().default(100),
+  RATE_LIMIT_MAX_REQUESTS: z.coerce.number().default(1000),
   BCRYPT_SALT_ROUNDS: z.coerce.number().default(10),
   MAX_LOGIN_ATTEMPTS: z.coerce.number().default(5),
   LOCKOUT_DURATION_MINUTES: z.coerce.number().default(15),
@@ -33,6 +33,17 @@ const envSchema = z.object({
   SEED_ADMIN_EMAIL: z.string().email().default('admin@beverage-pos.local'),
   SEED_BUSINESS_NAME: z.string().default('Beverage POS Development'),
 });
+
+if (process.env.NODE_ENV === 'production') {
+  const requiredSecrets = ['DATABASE_URL', 'JWT_ACCESS_SECRET', 'JWT_REFRESH_SECRET', 'CORS_ORIGINS'] as const;
+  const missing = requiredSecrets.filter((name) => !process.env[name]);
+  if (missing.length > 0) {
+    throw new Error(`Missing required production environment variables: ${missing.join(', ')}`);
+  }
+  if (process.env.JWT_ACCESS_SECRET === process.env.JWT_REFRESH_SECRET) {
+    throw new Error('JWT_ACCESS_SECRET and JWT_REFRESH_SECRET must be different in production');
+  }
+}
 
 const parsed = envSchema.safeParse(process.env);
 

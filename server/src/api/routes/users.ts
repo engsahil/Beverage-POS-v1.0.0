@@ -120,6 +120,14 @@ router.post('/', authorize('cashier.manage'), validate(createUserSchema), async 
       });
       return;
     }
+    if (error instanceof Error && (
+      error.message.startsWith('Invalid role') ||
+      error.message.startsWith('Invalid or inactive branch') ||
+      error.message.startsWith('A branch is required')
+    )) {
+      res.status(400).json({ success: false, error: { code: 'INVALID_REFERENCE', message: error.message } });
+      return;
+    }
 
     res.status(500).json({
       success: false,
