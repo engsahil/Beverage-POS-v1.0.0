@@ -556,29 +556,22 @@ export async function getCurrentUser(userId: string) {
     return null;
   }
 
-  const permissions = user.role?.permissions.map(rp => ({
-    id: rp.permission.id,
-    name: rp.permission.name,
-    module: rp.permission.module,
-    action: rp.permission.action,
-  })) || [];
+  const permissions = user.role?.permissions.map(rp => rp.permission.name) || [];
 
+  // Keep /auth/me contract identical to the login user object so a page refresh
+  // cannot corrupt frontend auth state with a second, incompatible shape.
   return {
     id: user.id,
     username: user.username,
     fullName: user.fullName,
     email: user.email,
     phone: user.phone,
-    isActive: user.isActive,
-    lastLoginAt: user.lastLoginAt,
-    createdAt: user.createdAt,
-    business: user.business,
-    branch: user.branch,
-    role: user.role ? {
-      id: user.role.id,
-      name: user.role.name,
-      description: user.role.description,
-    } : null,
+    roleId: user.roleId,
+    roleName: user.role?.name || null,
+    branchId: user.branchId,
+    branchName: user.branch?.name || null,
+    businessId: user.businessId,
+    businessName: user.business.name,
     permissions,
   };
 }

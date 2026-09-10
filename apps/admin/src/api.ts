@@ -1,50 +1,60 @@
 import axios from 'axios';
 
-const api = axios.create({
-  baseURL: '/api/v1',
-  timeout: 15000,
-});
+const apiOrigin = (import.meta.env.VITE_API_BASE_URL || '').replace(/\/$/, '');
+const api = axios.create({ baseURL: `${apiOrigin}/api/v1`, timeout: 15000 });
 
-api.interceptors.request.use((config) => {
-  const token = localStorage.getItem('adminAccessToken');
-  if (token) {
-    config.headers.Authorization = `Bearer ${token}`;
-  }
-  return config;
+const ACCESS_KEY = 'adminAccessToken';
+const REFRESH_KEY = 'adminRefreshToken';
+let refreshPromise: Promise<string> | null = null;
+
+function clearSession() {
+  localStorage.removeItem(ACCESS_KEY);
+  localStorage.removeItem(REFRESH_KEY);
+  localStorage.removeItem('adminUser');
+}
+
+api.interceptors.request.use((request) => {
+  const token = localStorage.getItem(ACCESS_KEY);
+  if (token) request.headers.Authorization = `Bearer ${token}`;
+  return request;
 });
 
 api.interceptors.response.use(
-  (response) => response,
+  response => response,
   async (error) => {
-    const originalRequest = error.config;
-    
-    if (error.response?.status === 401 && !originalRequest._retry) {
-      originalRequest._retry = true;
-      
-      try {
-        const refreshToken = localStorage.getItem('adminRefreshToken');
-        if (!refreshToken) throw new Error('No refresh token');
-        
-        const { data } = await axios.post('/api/v1/auth/refresh', {
-          refreshToken,
-        });
-        
-        localStorage.setItem('adminAccessToken', data.data.accessToken);
-        localStorage.setItem('adminRefreshToken', data.data.refreshToken);
-        
-        originalRequest.headers.Authorization = `Bearer ${data.data.accessToken}`;
-        return api(originalRequest);
-      } catch (refreshError) {
-        localStorage.removeItem('adminAccessToken');
-        localStorage.removeItem('adminRefreshToken');
-        localStorage.removeItem('adminUser');
-        window.location.href = '/login';
-        return Promise.reject(refreshError);
-      }
+    const request = error.config;
+    const isAuthRequest = typeof request?.url === 'string' && /\/auth\/(login|refresh)/.test(request.url);
+    if (error.response?.status !== 401 || request?._retry || isAuthRequest) return Promise.reject(error);
+
+    request._retry = true;
+    const refreshToken = localStorage.getItem(REFRESH_KEY);
+    if (!refreshToken) {
+      clearSession();
+      if (window.location.pathname !== '/login') window.location.assign('/login');
+      return Promise.reject(error);
     }
-    
-    return Promise.reject(error);
-  }
+
+    try {
+      // All concurrent 401s wait for one refresh/rotation operation.
+      if (!refreshPromise) {
+        refreshPromise = axios.post(`${apiOrigin}/api/v1/auth/refresh`, { refreshToken }, { timeout: 15000 })
+          .then(({ data }) => {
+            localStorage.setItem(ACCESS_KEY, data.data.accessToken);
+            localStorage.setItem(REFRESH_KEY, data.data.refreshToken);
+            return data.data.accessToken as string;
+          })
+          .finally(() => { refreshPromise = null; });
+      }
+      const accessToken = await refreshPromise;
+      request.headers = request.headers || {};
+      request.headers.Authorization = `Bearer ${accessToken}`;
+      return api(request); // exactly one retry, protected by _retry
+    } catch (refreshError) {
+      clearSession();
+      if (window.location.pathname !== '/login') window.location.assign('/login');
+      return Promise.reject(refreshError);
+    }
+  },
 );
 
 export default api;

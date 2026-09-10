@@ -69,7 +69,9 @@ export default function Vendors() {
 
     try {
       setCreating(true);
-      await api.post('/vendors', newVendor);
+      const { taxId: _unsupportedTaxId, ...supportedFields } = newVendor;
+      const payload = Object.fromEntries(Object.entries(supportedFields).filter(([, value]) => value.trim() !== ''));
+      await api.post('/vendors', payload);
       setShowCreateModal(false);
       setNewVendor({
         name: '',
@@ -123,7 +125,9 @@ export default function Vendors() {
 
     try {
       setUpdating(true);
-      await api.put(`/vendors/${editingVendor.id}`, editForm);
+      const { taxId: _unsupportedTaxId, ...supportedFields } = editForm;
+      const payload = Object.fromEntries(Object.entries(supportedFields).map(([key, value]) => [key, value.trim() || null]));
+      await api.put(`/vendors/${editingVendor.id}`, payload);
       setShowEditModal(false);
       setEditingVendor(null);
       loadVendors();

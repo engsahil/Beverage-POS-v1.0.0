@@ -10,10 +10,9 @@ import * as backupService from '../../services/backupService.js';
 
 const router = Router();
 
-// Apply backup rate limiter to all routes
-router.use(backupLimiter);
-
 router.use(authenticate);
+// Keep abuse protection on expensive mutations without counting normal page reads.
+router.use(backupLimiter);
 
 /**
  * GET /backups

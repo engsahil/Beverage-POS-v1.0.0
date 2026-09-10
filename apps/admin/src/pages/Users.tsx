@@ -45,6 +45,7 @@ export default function Users() {
   useEffect(() => {
     loadUsers();
     loadRoles();
+    loadBranches();
   }, []);
 
   const loadUsers = async () => {
@@ -68,24 +69,50 @@ export default function Users() {
     }
   };
 
+  const loadBranches = async () => {
+    try {
+      const { data } = await api.get('/branches');
+      const activeBranches = (data.data || []).filter((branch: Branch & { isActive?: boolean }) => branch.isActive !== false);
+      setBranches(activeBranches);
+      if (activeBranches.length === 1) {
+        setForm(current => ({ ...current, branchId: current.branchId || activeBranches[0].id }));
+      }
+    } catch (err) {
+      console.error('Failed to load branches:', err);
+    }
+  };
+
   const handleCreate = async () => {
-    if (!form.username || !form.password || !form.fullName) {
-      alert('Username, password, and full name are required');
+    const selectedRole = roles.find(role => role.id === form.roleId);
+    if (!form.username || !form.password || !form.fullName || !form.roleId) {
+      alert('Username, password, full name, and role are required');
+      return;
+    }
+    if (selectedRole?.name === 'Cashier' && !form.branchId) {
+      alert('A branch is required for Cashier users');
       return;
     }
 
     try {
       setCreating(true);
-      await api.post('/users', {
-        ...form,
-        branchId: form.branchId || null,
-        roleId: form.roleId || null,
-      });
+      const payload = {
+        username: form.username.trim(),
+        password: form.password,
+        fullName: form.fullName.trim(),
+        roleId: form.roleId,
+        isActive: true,
+        ...(form.email.trim() ? { email: form.email.trim() } : {}),
+        ...(form.phone.trim() ? { phone: form.phone.trim() } : {}),
+        ...(form.branchId ? { branchId: form.branchId } : {}),
+      };
+      await api.post('/users', payload);
       setShowCreateModal(false);
-      setForm({ username: '', password: '', fullName: '', email: '', phone: '', roleId: '', branchId: '' });
+      setForm({ username: '', password: '', fullName: '', email: '', phone: '', roleId: '', branchId: branches.length === 1 ? branches[0].id : '' });
       loadUsers();
     } catch (err: any) {
-      alert(err.response?.data?.error?.message || 'Failed to create user');
+      const apiError = err.response?.data?.error;
+      const details = apiError?.details?.map((detail: { message: string }) => detail.message).join('\n');
+      alert(details || apiError?.message || 'Failed to create user');
     } finally {
       setCreating(false);
     }
@@ -106,8 +133,8 @@ export default function Users() {
 
   const resetPassword = async (id: string, username: string) => {
     const newPass = prompt(`Enter new password for ${username}:`);
-    if (!newPass || newPass.length < 6) {
-      alert('Password must be at least 6 characters');
+    if (!newPass || newPass.length < 8) {
+      alert('Password must be at least 8 characters and include uppercase, lowercase, number, and symbol');
       return;
     }
     try {
@@ -260,8 +287,11 @@ export default function Users() {
                 <label style={{ display: 'block', marginBottom: 4, fontSize: 13, fontWeight: 500 }}>Password *</label>
                 <input
                   type="password"
+                  autoComplete="new-password"
+                  minLength={8}
                   value={form.password}
                   onChange={(e) => setForm({ ...form, password: e.target.value })}
+                  placeholder="8+ chars, upper/lower, number, symbol"
                   style={{ width: '100%', padding: '8px 12px', border: '1px solid #d1d5db', borderRadius: 6, fontSize: 14 }}
                 />
               </div>
@@ -298,16 +328,23 @@ export default function Users() {
               </div>
             </div>
 
-            <div style={{ marginBottom: 20 }}>
-              <label style={{ display: 'block', marginBottom: 4, fontSize: 13, fontWeight: 500 }}>Role</label>
-              <select
-                value={form.roleId}
-                onChange={(e) => setForm({ ...form, roleId: e.target.value })}
-                style={{ width: '100%', padding: '8px 12px', border: '1px solid #d1d5db', borderRadius: 6, fontSize: 14 }}
-              >
-                <option value="">Select Role</option>
-                {roles.map(r => <option key={r.id} value={r.id}>{r.name}</option>)}
-              </select>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: 20 }}>
+              <div>
+                <label style={{ display: 'block', marginBottom: 4, fontSize: 13, fontWeight: 500 }}>Role *</label>
+                <select value={form.roleId} onChange={(e) => setForm({ ...form, roleId: e.target.value })}
+                  style={{ width: '100%', padding: '8px 12px', border: '1px solid #d1d5db', borderRadius: 6, fontSize: 14 }}>
+                  <option value="">Select Role</option>
+                  {roles.map(r => <option key={r.id} value={r.id}>{r.name}</option>)}
+                </select>
+              </div>
+              <div>
+                <label style={{ display: 'block', marginBottom: 4, fontSize: 13, fontWeight: 500 }}>Branch</label>
+                <select value={form.branchId} onChange={(e) => setForm({ ...form, branchId: e.target.value })}
+                  style={{ width: '100%', padding: '8px 12px', border: '1px solid #d1d5db', borderRadius: 6, fontSize: 14 }}>
+                  <option value="">No branch</option>
+                  {branches.map(branch => <option key={branch.id} value={branch.id}>{branch.name}</option>)}
+                </select>
+              </div>
             </div>
 
             <div style={{ display: 'flex', gap: 10, justifyContent: 'flex-end' }}>

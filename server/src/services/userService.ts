@@ -53,7 +53,24 @@ export async function createUser(
     throw new Error('Username already exists');
   }
 
-  // Hash password
+  // Never allow role/branch IDs from another tenant to cross the business boundary.
+  const role = await prisma.role.findFirst({
+    where: { id: input.roleId, businessId: input.businessId },
+    select: { id: true, name: true },
+  });
+  if (!role) throw new Error('Invalid role for this business');
+
+  if (input.branchId) {
+    const branch = await prisma.branch.findFirst({
+      where: { id: input.branchId, businessId: input.businessId, isActive: true },
+      select: { id: true },
+    });
+    if (!branch) throw new Error('Invalid or inactive branch for this business');
+  } else if (role.name === 'Cashier') {
+    throw new Error('A branch is required for Cashier users');
+  }
+
+  // Hash password before the database write. Plaintext is never persisted or returned.
   const passwordHash = await hashPassword(password);
 
   // Create user
